@@ -9,6 +9,7 @@ Condensed from the product spec's §5. This is the file to update as work actual
 - [x] Auth: sign up / log in (`app/login.tsx`)
 - [x] Calendar Engine: day view merging medications + appointments (`app/(tabs)/index.tsx`) — week/month views still to build
 - [x] Medication Scheduler: add medication, recurrence rules, dose logging (taken/skip)
+- [x] Customizable dose reminder times: each dose slot's clock time is editable, not locked to the frequency default (`src/components/TimeSlotEditor.tsx`)
 - [x] Doctor-Visit Reminders: manual add, pre/post-visit notes
 - [x] Notifications Engine: local scheduled notifications on add (`src/features/notifications`)
 - [x] Family/Caregiver Mode: add dependent profiles (`app/(tabs)/profile.tsx`)

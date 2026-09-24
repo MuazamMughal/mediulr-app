@@ -7,6 +7,7 @@ import { AppText } from "../../src/components/AppText";
 import { AppInput } from "../../src/components/AppInput";
 import { AppButton } from "../../src/components/AppButton";
 import { SegmentedChips } from "../../src/components/SegmentedChips";
+import { TimeSlotEditor } from "../../src/components/TimeSlotEditor";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useAddMedication } from "../../src/features/medications/useMedications";
@@ -22,9 +23,8 @@ const DEFAULT_TIMES: Record<number, string[]> = {
   4: ["08:00", "12:00", "16:00", "20:00"],
 };
 
-function buildRule(frequencyIndex: number): RecurrenceRule {
-  const count = frequencyIndex + 1;
-  return { type: "times_per_day", count, at: DEFAULT_TIMES[count] };
+function buildRule(frequencyIndex: number, times: string[]): RecurrenceRule {
+  return { type: "times_per_day", count: frequencyIndex + 1, at: times };
 }
 
 export default function NewMedicationScreen() {
@@ -38,14 +38,20 @@ export default function NewMedicationScreen() {
   const [dosage, setDosage] = useState("");
   const [instructions, setInstructions] = useState("");
   const [frequencyIndex, setFrequencyIndex] = useState(2); // default: 3x/day
+  const [times, setTimes] = useState<string[]>(DEFAULT_TIMES[3]);
   const [quantityOnHand, setQuantityOnHand] = useState("");
+
+  function handleFrequencyChange(index: number) {
+    setFrequencyIndex(index);
+    setTimes(DEFAULT_TIMES[index + 1]);
+  }
 
   const canSave = name.trim().length > 0 && dosage.trim().length > 0 && !!profile;
 
   async function handleSave() {
     if (!profile) return;
     try {
-      const recurrenceRule = buildRule(frequencyIndex);
+      const recurrenceRule = buildRule(frequencyIndex, times);
       const startDate = new Date().toISOString().slice(0, 10);
 
       const medication = await addMedication.mutateAsync({
@@ -117,7 +123,14 @@ export default function NewMedicationScreen() {
           <AppText variant="caption" color="secondary" style={styles.label}>
             How often
           </AppText>
-          <SegmentedChips options={FREQUENCY_LABELS} selectedIndex={frequencyIndex} onSelect={setFrequencyIndex} />
+          <SegmentedChips options={FREQUENCY_LABELS} selectedIndex={frequencyIndex} onSelect={handleFrequencyChange} />
+        </View>
+
+        <View style={styles.field}>
+          <AppText variant="caption" color="secondary" style={styles.label}>
+            Reminder times
+          </AppText>
+          <TimeSlotEditor times={times} onChange={setTimes} />
         </View>
 
         <View style={styles.field}>

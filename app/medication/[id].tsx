@@ -9,7 +9,7 @@ import { Divider } from "../../src/components/Divider";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useArchiveMedication, useMedications } from "../../src/features/medications/useMedications";
-import { describeRecurrence } from "../../src/features/medications/describeRecurrence";
+import { describeRecurrence, describeRecurrenceTimes } from "../../src/features/medications/describeRecurrence";
 
 function InfoRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; value: string }) {
   const theme = useTheme();
@@ -56,6 +56,16 @@ export default function MedicationDetailScreen() {
 
       <AppCard style={styles.card}>
         <InfoRow icon="time-outline" label="Frequency" value={describeRecurrence(medication.recurrenceRule)} />
+        {describeRecurrenceTimes(medication.recurrenceRule) && (
+          <>
+            <Divider style={styles.divider} />
+            <InfoRow
+              icon="alarm-outline"
+              label="Reminder times"
+              value={describeRecurrenceTimes(medication.recurrenceRule) as string}
+            />
+          </>
+        )}
         <Divider style={styles.divider} />
         <InfoRow icon="document-text-outline" label="Instructions" value={medication.instructions || "None noted"} />
         {medication.quantityOnHand != null && (

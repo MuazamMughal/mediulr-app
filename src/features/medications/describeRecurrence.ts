@@ -13,3 +13,23 @@ export function describeRecurrence(rule: RecurrenceRule): string {
       return "One time";
   }
 }
+
+function formatTime(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+/** The actual clock times a rule fires at, for display (e.g. "8:00 AM, 2:00 PM, 8:00 PM"). */
+export function describeRecurrenceTimes(rule: RecurrenceRule): string | null {
+  switch (rule.type) {
+    case "times_per_day":
+    case "weekdays":
+      return rule.at.map(formatTime).join(", ");
+    case "once":
+      return new Date(rule.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    case "interval_hours":
+      return null;
+  }
+}
