@@ -8,9 +8,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mediulr.app"
     },
     "android": {
+      "package": "com.mediulr.app",
       "adaptiveIcon": {
         "backgroundColor": "#EA7A3D",
         "foregroundImage": "./assets/android-icon-foreground.png",

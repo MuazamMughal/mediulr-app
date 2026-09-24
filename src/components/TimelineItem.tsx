@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanimated";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { DoseCheckButton } from "./DoseCheckButton";
@@ -32,7 +33,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, onPress }: TimelineIt
           {formatTime(event.at)}
         </AppText>
         <View style={[styles.rail, { backgroundColor: theme.colors.medication }]} />
-        <View style={styles.body}>
+        <Animated.View style={styles.body} layout={LinearTransition.springify().damping(18).stiffness(180)}>
           <View style={styles.titleRow}>
             <View style={{ flex: 1 }}>
               <AppText variant="bodyMedium" weight="semibold" style={done ? styles.doneText : undefined}>
@@ -43,9 +44,11 @@ export function TimelineItem({ event, onMarkTaken, onSkip, onPress }: TimelineIt
                 {medication.instructions ? ` · ${medication.instructions}` : ""}
               </AppText>
               {missed && (
-                <AppText variant="metadata" color="warning" weight="semibold" style={styles.missedLabel}>
-                  Missed
-                </AppText>
+                <Animated.View entering={FadeIn.duration(200)}>
+                  <AppText variant="metadata" color="warning" weight="semibold" style={styles.missedLabel}>
+                    Missed
+                  </AppText>
+                </Animated.View>
               )}
             </View>
             <DoseCheckButton
@@ -59,13 +62,15 @@ export function TimelineItem({ event, onMarkTaken, onSkip, onPress }: TimelineIt
             />
           </View>
           {!done && (
-            <Pressable onPress={() => onSkip?.(medication.id, event.at)} hitSlop={6} style={styles.skipLink}>
-              <AppText variant="caption" color="tertiary">
-                Skip
-              </AppText>
-            </Pressable>
+            <Animated.View exiting={FadeOut.duration(150)}>
+              <Pressable onPress={() => onSkip?.(medication.id, event.at)} hitSlop={6} style={styles.skipLink}>
+                <AppText variant="caption" color="tertiary">
+                  Skip
+                </AppText>
+              </Pressable>
+            </Animated.View>
           )}
-        </View>
+        </Animated.View>
       </Pressable>
     );
   }

@@ -5,7 +5,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
-import { AppCard } from "../../src/components/AppCard";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useAppointments, useUpdatePostVisitNotes } from "../../src/features/appointments/useAppointments";
@@ -45,7 +44,7 @@ export default function AppointmentDetailScreen() {
           </AppText>
         )}
 
-        <AppCard style={styles.card}>
+        <View style={styles.details}>
           <View style={styles.detailRow}>
             <Ionicons name="time-outline" size={16} color={theme.colors.textTertiary} />
             <AppText variant="bodyMedium">
@@ -58,16 +57,16 @@ export default function AppointmentDetailScreen() {
               <AppText variant="bodyMedium">{appointment.location}</AppText>
             </View>
           )}
-        </AppCard>
+        </View>
 
         {appointment.preVisitNotes && (
           <View style={styles.section}>
             <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
               BEFORE YOUR VISIT
             </AppText>
-            <AppCard>
+            <View style={[styles.softSurface, { backgroundColor: theme.colors.visitSoft }]}>
               <AppText variant="body">{appointment.preVisitNotes}</AppText>
-            </AppCard>
+            </View>
           </View>
         )}
 
@@ -109,10 +108,11 @@ const styles = StyleSheet.create({
   content: { padding: 20 },
   hero: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   name: { marginBottom: 2 },
-  card: { marginTop: 24, gap: 12 },
+  details: { marginTop: 28, gap: 14 },
   detailRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  section: { marginTop: 24 },
-  sectionLabel: { marginBottom: 8, letterSpacing: 0.4 },
+  section: { marginTop: 28 },
+  sectionLabel: { marginBottom: 10, letterSpacing: 0.4 },
+  softSurface: { borderRadius: 14, padding: 14 },
   notesInput: {
     borderWidth: 1.5,
     borderRadius: 14,

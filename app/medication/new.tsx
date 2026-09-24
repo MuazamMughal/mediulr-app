@@ -8,6 +8,7 @@ import { AppInput } from "../../src/components/AppInput";
 import { AppButton } from "../../src/components/AppButton";
 import { SegmentedChips } from "../../src/components/SegmentedChips";
 import { TimeSlotEditor } from "../../src/components/TimeSlotEditor";
+import { SheetHeader } from "../../src/components/SheetHeader";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useAddMedication } from "../../src/features/medications/useMedications";
@@ -90,14 +91,12 @@ export default function NewMedicationScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <SheetHeader title="Add medication" onClose={() => router.back()} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <AppText variant="h1" style={styles.heading}>
-          Add medication
-        </AppText>
         <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
           We'll build the reminder schedule for you.
         </AppText>
@@ -159,7 +158,6 @@ export default function NewMedicationScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
-  heading: { marginBottom: 4 },
   subheading: { marginBottom: 24 },
   field: { marginBottom: 18 },
   label: { marginBottom: 8, marginLeft: 2 },

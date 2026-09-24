@@ -1,6 +1,13 @@
 import { Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+  ZoomIn,
+} from "react-native-reanimated";
 import { useTheme } from "../theme/ThemeProvider";
 
 interface DoseCheckButtonProps {
@@ -18,7 +25,10 @@ export function DoseCheckButton({ done, taken, missed = false, onPress }: DoseCh
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   function handlePress() {
-    scale.value = withSequence(withTiming(0.8, { duration: 90 }), withTiming(1, { duration: 160 }));
+    scale.value = withSequence(
+      withTiming(0.82, { duration: 90 }),
+      withSpring(1, { damping: 9, stiffness: 220 })
+    );
     onPress();
   }
 
@@ -33,14 +43,12 @@ export function DoseCheckButton({ done, taken, missed = false, onPress }: DoseCh
 
   return (
     <Pressable onPress={handlePress} hitSlop={8}>
-      <Animated.View
-        style={[
-          styles.circle,
-          { backgroundColor, borderColor },
-          animatedStyle,
-        ]}
-      >
-        {taken && <Ionicons name="checkmark" size={18} color={theme.colors.textInverse} />}
+      <Animated.View style={[styles.circle, { backgroundColor, borderColor }, animatedStyle]}>
+        {taken && (
+          <Animated.View entering={ZoomIn.duration(220).springify().damping(12)}>
+            <Ionicons name="checkmark" size={18} color={theme.colors.textInverse} />
+          </Animated.View>
+        )}
         {done && !taken && <Ionicons name="close" size={16} color={theme.colors.textTertiary} />}
       </Animated.View>
     </Pressable>

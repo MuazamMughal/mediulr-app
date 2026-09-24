@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../src/theme/ThemeProvider";
 import { AppText } from "../src/components/AppText";
 import { AppInput } from "../src/components/AppInput";
 import { AppButton } from "../src/components/AppButton";
+import { AppLogo } from "../src/components/AppLogo";
 import { friendlyError } from "../src/lib/friendlyError";
 import { supabase } from "../src/lib/supabase";
 
@@ -49,9 +49,7 @@ export default function LoginScreen() {
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 32 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.logo, { backgroundColor: theme.colors.accentSoft }]}>
-          <Ionicons name="medical" size={26} color={theme.colors.accent} />
-        </View>
+        <AppLogo size={56} style={styles.logo} />
         <AppText variant="display" style={styles.title}>
           Mediulr
         </AppText>
@@ -110,7 +108,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 28, flexGrow: 1 },
-  logo: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  logo: { marginBottom: 20 },
   title: { marginBottom: 8 },
   subtitle: { marginBottom: 40, lineHeight: 22 },
   field: { marginBottom: 16 },

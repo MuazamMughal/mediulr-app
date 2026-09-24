@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
@@ -13,7 +14,7 @@ import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useCalendarEvents } from "../../src/features/calendar/useCalendarEvents";
 import { useLogDose } from "../../src/features/medications/useMedications";
-import { Alert } from "react-native";
+import type { CalendarEvent } from "../../src/types/domain";
 
 function startOfDay(d: Date) {
   const copy = new Date(d);
@@ -29,6 +30,14 @@ function isToday(d: Date) {
   const t = new Date();
   return d.toDateString() === t.toDateString();
 }
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+type Row = { key: string; kind: "now" } | { key: string; kind: "event"; event: CalendarEvent };
 
 export default function CalendarScreen() {
   const theme = useTheme();
@@ -37,6 +46,7 @@ export default function CalendarScreen() {
   const [day, setDay] = useState(() => new Date());
   const rangeStart = useMemo(() => startOfDay(day), [day]);
   const rangeEnd = useMemo(() => endOfDay(day), [day]);
+  const today = isToday(day);
 
   const { data: events, isLoading } = useCalendarEvents(profile?.id, rangeStart, rangeEnd);
   const logDose = useLogDose();
@@ -45,8 +55,26 @@ export default function CalendarScreen() {
   const doneCount = medicationEvents.filter((e) => e.dose.status === "taken" || e.dose.status === "skipped").length;
   const totalCount = medicationEvents.length;
   const progress = totalCount > 0 ? doneCount / totalCount : 0;
+  const allDone = totalCount > 0 && doneCount === totalCount;
+
+  const rows = useMemo<Row[]>(() => {
+    if (!events) return [];
+    const eventRows: Row[] = events.map((e, i) => ({ key: `${e.kind}:${e.at}:${i}`, kind: "event", event: e }));
+    if (!today) return eventRows;
+    const now = Date.now();
+    const insertAt = eventRows.findIndex((r) => r.kind === "event" && new Date(r.event.at).getTime() > now);
+    const marker: Row = { key: "now-marker", kind: "now" };
+    if (insertAt === -1) return [...eventRows, marker];
+    eventRows.splice(insertAt, 0, marker);
+    return eventRows;
+  }, [events, today]);
 
   function handleDoseAction(medicationId: string, scheduledAt: string, status: "taken" | "skipped") {
+    if (status === "taken") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    }
     logDose.mutate(
       { medicationId, scheduledAt, status },
       { onError: (err) => Alert.alert("Couldn't update", friendlyError(err)) }
@@ -55,14 +83,14 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top"]}>
-      {/* Date header */}
+      {/* Header */}
       <View style={styles.header}>
-        <View>
-          <AppText variant="metadata" color="tertiary">
-            {isToday(day) ? "TODAY" : day.toLocaleDateString(undefined, { weekday: "long" }).toUpperCase()}
+        <View style={{ flex: 1 }}>
+          <AppText variant="bodySmall" color="secondary">
+            {today ? greeting() : day.toLocaleDateString(undefined, { weekday: "long" })}
           </AppText>
-          <AppText variant="display" style={styles.dateTitle}>
-            {day.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+          <AppText variant="h1" style={styles.dateTitle}>
+            {today ? "Today" : day.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
           </AppText>
         </View>
         <View style={styles.dayNav}>
@@ -71,90 +99,94 @@ export default function CalendarScreen() {
             onPress={() => setDay((d) => new Date(d.getTime() - 86400000))}
             style={[styles.navButton, { backgroundColor: theme.colors.surfaceSunken }]}
           >
-            <Ionicons name="chevron-back" size={18} color={theme.colors.textSecondary} />
+            <Ionicons name="chevron-back" size={17} color={theme.colors.textSecondary} />
           </Pressable>
           <Pressable
             hitSlop={8}
             onPress={() => setDay((d) => new Date(d.getTime() + 86400000))}
             style={[styles.navButton, { backgroundColor: theme.colors.surfaceSunken }]}
           >
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={17} color={theme.colors.textSecondary} />
           </Pressable>
         </View>
       </View>
 
-      {/* Progress */}
+      {/* Status */}
       {totalCount > 0 && (
         <View style={styles.progressSection}>
-          <View style={styles.progressRow}>
-            <AppText variant="bodySmall" color="secondary">
-              {doneCount} of {totalCount} done today
-            </AppText>
-            {progress === 1 && (
-              <AppText variant="bodySmall" color="success" weight="semibold">
-                All set ✓
-              </AppText>
-            )}
-          </View>
           <View style={[styles.progressTrack, { backgroundColor: theme.colors.surfaceSunken }]}>
             <View
               style={[
                 styles.progressFill,
-                { width: `${progress * 100}%`, backgroundColor: theme.colors.success },
+                { width: `${progress * 100}%`, backgroundColor: allDone ? theme.colors.success : theme.colors.accent },
               ]}
             />
           </View>
+          <AppText variant="caption" color={allDone ? "success" : "secondary"} weight={allDone ? "semibold" : undefined}>
+            {allDone ? "All done for today" : `${doneCount} of ${totalCount} taken`}
+          </AppText>
         </View>
       )}
 
       {isLoading && (
-        <View>
+        <View style={{ marginTop: 8 }}>
           <SkeletonRow />
           <SkeletonRow />
           <SkeletonRow />
         </View>
       )}
 
-      {!isLoading && (!events || events.length === 0) && (
+      {!isLoading && rows.length === 0 && (
         <EmptyState
           icon="sunny-outline"
-          title="Nothing scheduled today"
+          title="A clear day"
           description="Add a medication or doctor visit and it'll show up here, right when you need it."
           actionLabel="Add medication"
           onAction={() => router.push("/medication/new")}
         />
       )}
 
-      {!isLoading && events && events.length > 0 && (
+      {!isLoading && rows.length > 0 && (
         <FlatList
-          data={events}
-          keyExtractor={(item, i) => `${item.kind}:${item.at}:${i}`}
-          renderItem={({ item }) => (
-            <TimelineItem
-              event={item}
-              onMarkTaken={(id, at) => handleDoseAction(id, at, "taken")}
-              onSkip={(id, at) => handleDoseAction(id, at, "skipped")}
-              onPress={item.kind === "medication" ? () => router.push(`/medication/${item.medication.id}`) : undefined}
-            />
-          )}
+          data={rows}
+          keyExtractor={(r) => r.key}
+          renderItem={({ item }) => {
+            if (item.kind === "now") return <NowMarker />;
+            const event = item.event;
+            return (
+              <TimelineItem
+                event={event}
+                onMarkTaken={(id, at) => handleDoseAction(id, at, "taken")}
+                onSkip={(id, at) => handleDoseAction(id, at, "skipped")}
+                onPress={event.kind === "medication" ? () => router.push(`/medication/${event.medication.id}`) : undefined}
+              />
+            );
+          }}
           contentContainerStyle={styles.listContent}
         />
       )}
 
       <View style={[styles.fabRow, { borderTopColor: theme.colors.border }]}>
         <View style={{ flex: 1 }}>
-          <AppButton label="+ Medication" variant="primary" size="md" onPress={() => router.push("/medication/new")} />
+          <AppButton label="Medication" size="md" onPress={() => router.push("/medication/new")} />
         </View>
         <View style={{ flex: 1 }}>
-          <AppButton
-            label="+ Doctor visit"
-            variant="secondary"
-            size="md"
-            onPress={() => router.push("/appointment/new")}
-          />
+          <AppButton label="Doctor visit" variant="secondary" size="md" onPress={() => router.push("/appointment/new")} />
         </View>
       </View>
     </SafeAreaView>
+  );
+}
+
+function NowMarker() {
+  const theme = useTheme();
+  return (
+    <View style={styles.nowRow}>
+      <View style={styles.nowTimeCol}>
+        <View style={[styles.nowDot, { backgroundColor: theme.colors.accent }]} />
+      </View>
+      <View style={[styles.nowLine, { backgroundColor: theme.colors.accent }]} />
+    </View>
   );
 }
 
@@ -163,11 +195,14 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20, paddingTop: 8 },
   dateTitle: { marginTop: 2 },
   dayNav: { flexDirection: "row", gap: 8 },
-  navButton: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  progressSection: { paddingHorizontal: 20, marginTop: 20, marginBottom: 4 },
-  progressRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  progressTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: 3 },
-  listContent: { paddingTop: 12, paddingBottom: 8 },
+  navButton: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  progressSection: { paddingHorizontal: 20, marginTop: 24, marginBottom: 4, gap: 8 },
+  progressTrack: { height: 4, borderRadius: 2, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 2 },
+  listContent: { paddingTop: 16, paddingBottom: 8 },
   fabRow: { flexDirection: "row", gap: 12, padding: 16, borderTopWidth: 1 },
+  nowRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, height: 16 },
+  nowTimeCol: { width: 60, alignItems: "flex-end", paddingRight: 8 },
+  nowDot: { width: 7, height: 7, borderRadius: 3.5 },
+  nowLine: { flex: 1, height: 1.5, opacity: 0.5 },
 });

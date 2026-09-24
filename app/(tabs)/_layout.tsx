@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../src/theme/ThemeProvider";
+import { TabIcon } from "../../src/components/TabIcon";
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -11,14 +11,14 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textTertiary,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: -2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingTop: 8,
-          paddingBottom: 8,
+          height: 64,
+          paddingTop: 10,
+          paddingBottom: 10,
         },
       }}
     >
@@ -27,7 +27,7 @@ export default function TabsLayout() {
         options={{
           title: "Calendar",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "calendar" : "calendar-outline"} size={size} color={color} />
+            <TabIcon name="calendar-outline" activeName="calendar" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -36,7 +36,7 @@ export default function TabsLayout() {
         options={{
           title: "Medications",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "medkit" : "medkit-outline"} size={size} color={color} />
+            <TabIcon name="medkit-outline" activeName="medkit" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -45,7 +45,7 @@ export default function TabsLayout() {
         options={{
           title: "Doctor Visits",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "person" : "person-outline"} size={size} color={color} />
+            <TabIcon name="person-outline" activeName="person" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -54,7 +54,13 @@ export default function TabsLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={size} color={color} />
+            <TabIcon
+              name="person-circle-outline"
+              activeName="person-circle"
+              color={color}
+              size={size}
+              focused={focused}
+            />
           ),
         }}
       />

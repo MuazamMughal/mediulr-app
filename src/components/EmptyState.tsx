@@ -1,5 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { AppButton } from "./AppButton";
@@ -15,9 +16,11 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
   const theme = useTheme();
   return (
-    <View style={styles.container}>
-      <View style={[styles.iconWrap, { backgroundColor: theme.colors.accentSoft }]}>
-        <Ionicons name={icon} size={28} color={theme.colors.accent} />
+    <Animated.View entering={FadeIn.duration(400)} style={styles.container}>
+      <View style={styles.iconStack}>
+        <View style={[styles.ringOuter, { backgroundColor: theme.colors.surfaceSunken }]} />
+        <View style={[styles.ringInner, { backgroundColor: theme.colors.accentSoft }]} />
+        <Ionicons name={icon} size={26} color={theme.colors.accent} style={styles.icon} />
       </View>
       <AppText variant="h3" style={styles.title}>
         {title}
@@ -30,14 +33,17 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }: 
           <AppButton label={actionLabel} onPress={onAction} fullWidth={false} />
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { alignItems: "center", paddingHorizontal: 32, paddingVertical: 48 },
-  iconWrap: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  container: { alignItems: "center", paddingHorizontal: 32, paddingVertical: 56 },
+  iconStack: { width: 88, height: 72, alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  ringOuter: { position: "absolute", width: 88, height: 88, borderRadius: 44, top: -8, opacity: 0.5 },
+  ringInner: { position: "absolute", width: 60, height: 60, borderRadius: 30 },
+  icon: { position: "absolute" },
   title: { textAlign: "center", marginBottom: 6 },
-  description: { textAlign: "center", lineHeight: 20 },
-  action: { marginTop: 20 },
+  description: { textAlign: "center", lineHeight: 20, maxWidth: 260 },
+  action: { marginTop: 22 },
 });

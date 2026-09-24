@@ -8,6 +8,7 @@ import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
 import { AppInput } from "../../src/components/AppInput";
 import { AppButton } from "../../src/components/AppButton";
+import { SheetHeader } from "../../src/components/SheetHeader";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useAddAppointment } from "../../src/features/appointments/useAppointments";
@@ -66,14 +67,12 @@ export default function NewAppointmentScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <SheetHeader title="Add doctor visit" onClose={() => router.back()} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <AppText variant="h1" style={styles.heading}>
-          Add doctor visit
-        </AppText>
         <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
           We'll remind you the day before and an hour before.
         </AppText>
@@ -140,7 +139,6 @@ export default function NewAppointmentScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
-  heading: { marginBottom: 4 },
   subheading: { marginBottom: 24 },
   field: { marginBottom: 18 },
   label: { marginBottom: 8, marginLeft: 2 },

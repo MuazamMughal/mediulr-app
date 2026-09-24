@@ -30,9 +30,9 @@ function Navigation() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-      <Stack.Screen name="medication/new" options={{ title: "Add medication", presentation: "modal" }} />
+      <Stack.Screen name="medication/new" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="medication/[id]" options={{ title: "Medication" }} />
-      <Stack.Screen name="appointment/new" options={{ title: "Add doctor visit", presentation: "modal" }} />
+      <Stack.Screen name="appointment/new" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="appointment/[id]" options={{ title: "Doctor visit" }} />
       <Stack.Screen name="paywall" options={{ title: "Mediulr Premium", presentation: "modal" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />

@@ -3,27 +3,21 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
-import { AppCard } from "../../src/components/AppCard";
 import { AppButton } from "../../src/components/AppButton";
-import { Divider } from "../../src/components/Divider";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useArchiveMedication, useMedications } from "../../src/features/medications/useMedications";
 import { describeRecurrence, describeRecurrenceTimes } from "../../src/features/medications/describeRecurrence";
 
-function InfoRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; value: string }) {
-  const theme = useTheme();
+function InfoLine({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.infoRow}>
-      <View style={[styles.infoIcon, { backgroundColor: theme.colors.medicationSoft }]}>
-        <Ionicons name={icon} size={16} color={theme.colors.medication} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <AppText variant="metadata" color="tertiary">
-          {label}
-        </AppText>
-        <AppText variant="bodyMedium">{value}</AppText>
-      </View>
+    <View style={styles.infoLine}>
+      <AppText variant="caption" color="tertiary" style={styles.infoLabel}>
+        {label}
+      </AppText>
+      <AppText variant="bodyMedium" style={styles.infoValue}>
+        {value}
+      </AppText>
     </View>
   );
 }
@@ -42,10 +36,12 @@ export default function MedicationDetailScreen() {
     return <View style={[styles.container, { backgroundColor: theme.colors.background }]} />;
   }
 
+  const times = describeRecurrenceTimes(medication.recurrenceRule);
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={styles.content}>
       <View style={[styles.hero, { backgroundColor: theme.colors.medicationSoft }]}>
-        <Ionicons name="medkit" size={22} color={theme.colors.medication} />
+        <Ionicons name="medkit" size={24} color={theme.colors.medication} />
       </View>
       <AppText variant="h1" style={styles.name}>
         {medication.name}
@@ -54,27 +50,14 @@ export default function MedicationDetailScreen() {
         {medication.dosage}
       </AppText>
 
-      <AppCard style={styles.card}>
-        <InfoRow icon="time-outline" label="Frequency" value={describeRecurrence(medication.recurrenceRule)} />
-        {describeRecurrenceTimes(medication.recurrenceRule) && (
-          <>
-            <Divider style={styles.divider} />
-            <InfoRow
-              icon="alarm-outline"
-              label="Reminder times"
-              value={describeRecurrenceTimes(medication.recurrenceRule) as string}
-            />
-          </>
-        )}
-        <Divider style={styles.divider} />
-        <InfoRow icon="document-text-outline" label="Instructions" value={medication.instructions || "None noted"} />
+      <View style={styles.info}>
+        <InfoLine label="FREQUENCY" value={describeRecurrence(medication.recurrenceRule)} />
+        {times && <InfoLine label="REMINDER TIMES" value={times} />}
+        <InfoLine label="INSTRUCTIONS" value={medication.instructions || "None noted"} />
         {medication.quantityOnHand != null && (
-          <>
-            <Divider style={styles.divider} />
-            <InfoRow icon="cube-outline" label="Quantity remaining" value={`${medication.quantityOnHand} doses`} />
-          </>
+          <InfoLine label="QUANTITY REMAINING" value={`${medication.quantityOnHand} doses`} />
         )}
-      </AppCard>
+      </View>
 
       <View style={styles.destructive}>
         <AppButton
@@ -105,12 +88,12 @@ export default function MedicationDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 20 },
-  hero: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  name: { marginBottom: 2 },
-  card: { marginTop: 24 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 },
-  infoIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  divider: { marginVertical: 12 },
-  destructive: { marginTop: 32 },
+  content: { padding: 24 },
+  hero: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: 18 },
+  name: { marginBottom: 3 },
+  info: { marginTop: 36, gap: 22 },
+  infoLine: { gap: 4 },
+  infoLabel: { letterSpacing: 0.5 },
+  infoValue: { lineHeight: 22 },
+  destructive: { marginTop: 44 },
 });

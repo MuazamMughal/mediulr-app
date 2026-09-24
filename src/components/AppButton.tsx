@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, type PressableProps } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, type GestureResponderEvent, type PressableProps } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 
@@ -20,10 +21,18 @@ export function AppButton({
   loading = false,
   fullWidth = true,
   disabled,
+  onPress,
   ...props
 }: AppButtonProps) {
   const theme = useTheme();
   const isDisabled = disabled || loading;
+
+  function handlePress(event: GestureResponderEvent) {
+    if (variant === "primary" || variant === "destructive") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    }
+    onPress?.(event);
+  }
 
   const backgrounds: Record<Variant, string> = {
     primary: theme.colors.accent,
@@ -41,6 +50,7 @@ export function AppButton({
   return (
     <Pressable
       disabled={isDisabled}
+      onPress={handlePress}
       {...props}
       style={({ pressed }) => [
         styles.base,

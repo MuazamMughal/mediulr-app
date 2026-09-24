@@ -14,6 +14,7 @@ Condensed from the product spec's §5. This is the file to update as work actual
 - [x] Notifications Engine: local scheduled notifications on add (`src/features/notifications`)
 - [x] Family/Caregiver Mode: add dependent profiles (`app/(tabs)/profile.tsx`)
 - [x] Design system: theme tokens, reusable components, full visual redesign across every screen (`src/theme/`, `src/components/`)
+- [x] Motion & delight pass: haptics on primary actions and Mark Taken, spring/fade transitions on the timeline and empty states, a live "now" marker on today's calendar, custom bottom-sheet headers for the add flows
 - [x] Run against a real Supabase project and a device (tested live via Expo Go)
 - [ ] Refill reminders (quantity is tracked; the "notify below threshold" job isn't wired up yet)
 - [ ] Missed-dose escalation (caregiver alert) — the Calendar visually flags a missed dose, but no notification/alert is sent to a caregiver yet
