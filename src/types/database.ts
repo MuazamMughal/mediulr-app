@@ -1,0 +1,146 @@
+/**
+ * Hand-written stand-in matching supabase/migrations/0001_init.sql.
+ * Once a real Supabase project exists, regenerate with:
+ *   npx supabase gen types typescript --project-id <id> > src/types/database.ts
+ */
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          owner_id: string;
+          is_self: boolean;
+          display_name: string;
+          date_of_birth: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          is_self?: boolean;
+          display_name: string;
+          date_of_birth?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      medications: {
+        Row: {
+          id: string;
+          profile_id: string;
+          name: string;
+          dosage: string;
+          instructions: string | null;
+          recurrence_rule: Record<string, unknown>;
+          quantity_on_hand: number | null;
+          refill_threshold: number | null;
+          start_date: string;
+          end_date: string | null;
+          archived_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          name: string;
+          dosage: string;
+          instructions?: string | null;
+          recurrence_rule: Record<string, unknown>;
+          quantity_on_hand?: number | null;
+          refill_threshold?: number | null;
+          start_date: string;
+          end_date?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["medications"]["Insert"]>;
+        Relationships: [];
+      };
+      dose_logs: {
+        Row: {
+          id: string;
+          medication_id: string;
+          scheduled_at: string;
+          status: "pending" | "taken" | "skipped" | "snoozed";
+          logged_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          medication_id: string;
+          scheduled_at: string;
+          status?: "pending" | "taken" | "skipped" | "snoozed";
+          logged_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["dose_logs"]["Insert"]>;
+        Relationships: [];
+      };
+      appointments: {
+        Row: {
+          id: string;
+          profile_id: string;
+          provider_name: string;
+          specialty: string | null;
+          location: string | null;
+          scheduled_at: string;
+          pre_visit_notes: string | null;
+          post_visit_notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          provider_name: string;
+          specialty?: string | null;
+          location?: string | null;
+          scheduled_at: string;
+          pre_visit_notes?: string | null;
+          post_visit_notes?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["appointments"]["Insert"]>;
+        Relationships: [];
+      };
+      reminders: {
+        Row: {
+          id: string;
+          source_type: "medication" | "appointment";
+          source_id: string;
+          offset_minutes: number;
+          escalation_enabled: boolean;
+        };
+        Insert: {
+          id?: string;
+          source_type: "medication" | "appointment";
+          source_id: string;
+          offset_minutes: number;
+          escalation_enabled?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["reminders"]["Insert"]>;
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: {
+          user_id: string;
+          status: "trial" | "active" | "expired" | "canceled";
+          current_period_end: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          status: "trial" | "active" | "expired" | "canceled";
+          current_period_end?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["subscriptions"]["Insert"]>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}
