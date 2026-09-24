@@ -88,8 +88,8 @@ const styles = StyleSheet.create({
   subtitle: { textAlign: "center", marginTop: 4, marginBottom: 32 },
   features: { alignSelf: "stretch", gap: 16, marginBottom: 32 },
   featureRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  featureIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  priceCard: { alignSelf: "stretch", alignItems: "center", borderWidth: 1, borderRadius: 20, paddingVertical: 24 },
+  featureIcon: { width: 32, height: 32, borderRadius: 10, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
+  priceCard: { alignSelf: "stretch", alignItems: "center", borderWidth: 1, borderRadius: 20, borderCurve: "continuous", paddingVertical: 24 },
   footer: { paddingHorizontal: 28, paddingTop: 12 },
   secondaryLink: { alignItems: "center", paddingVertical: 12 },
 });

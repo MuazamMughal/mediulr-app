@@ -97,6 +97,8 @@ export default function CalendarScreen() {
           <Pressable
             hitSlop={8}
             onPress={() => setDay((d) => new Date(d.getTime() - 86400000))}
+            accessibilityRole="button"
+            accessibilityLabel="Previous day"
             style={[styles.navButton, { backgroundColor: theme.colors.surfaceSunken }]}
           >
             <Ionicons name="chevron-back" size={17} color={theme.colors.textSecondary} />
@@ -104,6 +106,8 @@ export default function CalendarScreen() {
           <Pressable
             hitSlop={8}
             onPress={() => setDay((d) => new Date(d.getTime() + 86400000))}
+            accessibilityRole="button"
+            accessibilityLabel="Next day"
             style={[styles.navButton, { backgroundColor: theme.colors.surfaceSunken }]}
           >
             <Ionicons name="chevron-forward" size={17} color={theme.colors.textSecondary} />

@@ -68,7 +68,7 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
                   value={timeToDate(time)}
                   mode="time"
                   display="spinner"
-                  onChange={(_, date) => date && updateTime(index, date)}
+                  onValueChange={(_, date) => updateTime(index, date)}
                 />
                 <Pressable onPress={() => setEditingIndex(null)} style={styles.doneRow}>
                   <AppText variant="bodySmall" color="accent" weight="semibold">
@@ -82,10 +82,8 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
               <DateTimePicker
                 value={timeToDate(time)}
                 mode="time"
-                onChange={(event, date) => {
-                  if (event.type === "set" && date) updateTime(index, date);
-                  setEditingIndex(null);
-                }}
+                onValueChange={(_, date) => updateTime(index, date)}
+                onDismiss={() => setEditingIndex(null)}
               />
             )}
           </View>
@@ -97,8 +95,8 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
 
 const styles = StyleSheet.create({
   container: { gap: 8 },
-  row: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 12 },
-  doseIcon: { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  row: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 12, borderCurve: "continuous", paddingVertical: 12, paddingHorizontal: 12 },
+  doseIcon: { width: 26, height: 26, borderRadius: 8, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
   pickerWrap: { borderWidth: 1.5, borderTopWidth: 0, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginTop: -8, paddingTop: 8 },
   doneRow: { alignItems: "flex-end", paddingVertical: 8, paddingHorizontal: 12 },
 });

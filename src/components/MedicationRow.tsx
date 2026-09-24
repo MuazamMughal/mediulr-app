@@ -42,7 +42,7 @@ export function MedicationRow({ medication, onPress }: { medication: Medication;
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 1 },
   pressed: { opacity: 0.7 },
-  icon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  icon: { width: 40, height: 40, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
   body: { flex: 1 },
   subtitle: { marginTop: 2 },
   meta: { marginRight: 4 },

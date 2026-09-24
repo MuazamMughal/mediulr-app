@@ -19,20 +19,15 @@ export const radius = {
   pill: 999,
 } as const;
 
+/** boxShadow strings, not the legacy shadow-prefixed props — see expo-native-ui. `elevation` stays as the Android fallback. */
 export const shadow = {
   none: {},
   sm: {
-    shadowColor: "#221F1B",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    boxShadow: "0 2px 8px rgba(34, 31, 27, 0.06)",
     elevation: 2,
   },
   md: {
-    shadowColor: "#221F1B",
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
+    boxShadow: "0 6px 16px rgba(34, 31, 27, 0.08)",
     elevation: 5,
   },
 } as const;

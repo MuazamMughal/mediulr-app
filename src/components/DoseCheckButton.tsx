@@ -42,7 +42,14 @@ export function DoseCheckButton({ done, taken, missed = false, onPress }: DoseCh
         : theme.colors.borderStrong;
 
   return (
-    <Pressable onPress={handlePress} hitSlop={8}>
+    <Pressable
+      onPress={handlePress}
+      hitSlop={8}
+      disabled={done}
+      accessibilityRole="button"
+      accessibilityLabel={taken ? "Taken" : done ? "Skipped" : "Mark taken"}
+      accessibilityState={{ disabled: done }}
+    >
       <Animated.View style={[styles.circle, { backgroundColor, borderColor }, animatedStyle]}>
         {taken && (
           <Animated.View entering={ZoomIn.duration(220).springify().damping(12)}>

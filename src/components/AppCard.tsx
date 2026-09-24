@@ -15,6 +15,7 @@ export function AppCard({ elevated = true, padded = true, style, ...props }: App
         {
           backgroundColor: theme.colors.surface,
           borderRadius: theme.radius.lg,
+          borderCurve: "continuous",
           borderWidth: 1,
           borderColor: theme.colors.border,
         },

@@ -112,10 +112,11 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   section: { marginTop: 28 },
   sectionLabel: { marginBottom: 10, letterSpacing: 0.4 },
-  softSurface: { borderRadius: 14, padding: 14 },
+  softSurface: { borderRadius: 14, borderCurve: "continuous", padding: 14 },
   notesInput: {
     borderWidth: 1.5,
     borderRadius: 14,
+    borderCurve: "continuous",
     padding: 14,
     minHeight: 110,
     textAlignVertical: "top",

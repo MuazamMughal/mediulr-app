@@ -56,7 +56,7 @@ export function VisitCard({ appointment, onPress }: { appointment: Appointment; 
 }
 
 const styles = StyleSheet.create({
-  card: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 16, padding: 14, marginHorizontal: 20, marginBottom: 10 },
+  card: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: 16, borderCurve: "continuous", padding: 14, marginHorizontal: 20, marginBottom: 10 },
   pressed: { opacity: 0.75 },
   dateBlock: { width: 44, alignItems: "center" },
   divider: { width: 1, height: 36, marginHorizontal: 14 },

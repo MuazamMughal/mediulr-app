@@ -100,14 +100,22 @@ export default function NewAppointmentScreen() {
             <Ionicons name="calendar-outline" size={18} color={theme.colors.visit} />
             <AppText variant="body">{scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</AppText>
           </Pressable>
-          {showPicker && (
+          {showPicker && Platform.OS === "ios" && (
+            <View style={[styles.pickerWrap, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+              <DateTimePicker value={scheduledAt} mode="datetime" display="spinner" onValueChange={(_, date) => setScheduledAt(date)} />
+              <Pressable onPress={() => setShowPicker(false)} style={styles.doneRow}>
+                <AppText variant="bodySmall" color="accent" weight="semibold">
+                  Done
+                </AppText>
+              </Pressable>
+            </View>
+          )}
+          {showPicker && Platform.OS === "android" && (
             <DateTimePicker
               value={scheduledAt}
               mode="datetime"
-              onChange={(_, date) => {
-                setShowPicker(Platform.OS === "ios");
-                if (date) setScheduledAt(date);
-              }}
+              onValueChange={(_, date) => setScheduledAt(date)}
+              onDismiss={() => setShowPicker(false)}
             />
           )}
         </View>
@@ -152,5 +160,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   multiline: { minHeight: 90, textAlignVertical: "top" },
+  pickerWrap: { borderWidth: 1.5, borderTopWidth: 0, borderBottomLeftRadius: 14, borderBottomRightRadius: 14, marginTop: -8, paddingTop: 8 },
+  doneRow: { alignItems: "flex-end", paddingVertical: 8, paddingHorizontal: 12 },
   footer: { padding: 16, borderTopWidth: 1 },
 });

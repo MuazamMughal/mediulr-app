@@ -30,11 +30,20 @@ function Navigation() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-      <Stack.Screen name="medication/new" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen
+        name="medication/new"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
       <Stack.Screen name="medication/[id]" options={{ title: "Medication" }} />
-      <Stack.Screen name="appointment/new" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen
+        name="appointment/new"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
       <Stack.Screen name="appointment/[id]" options={{ title: "Doctor visit" }} />
-      <Stack.Screen name="paywall" options={{ title: "Mediulr Premium", presentation: "modal" }} />
+      <Stack.Screen
+        name="paywall"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
     </Stack>
   );

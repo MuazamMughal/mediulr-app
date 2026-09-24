@@ -37,6 +37,7 @@ export function AppInput({ label, error, style, onFocus, onBlur, ...props }: App
             borderWidth: 1.5,
             borderColor,
             borderRadius: theme.radius.md,
+            borderCurve: "continuous",
             paddingHorizontal: theme.spacing.sm,
             paddingVertical: theme.spacing.sm,
             fontSize: theme.typography.body.fontSize,

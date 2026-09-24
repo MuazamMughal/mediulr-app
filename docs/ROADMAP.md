@@ -15,6 +15,7 @@ Condensed from the product spec's §5. This is the file to update as work actual
 - [x] Family/Caregiver Mode: add dependent profiles (`app/(tabs)/profile.tsx`)
 - [x] Design system: theme tokens, reusable components, full visual redesign across every screen (`src/theme/`, `src/components/`)
 - [x] Motion & delight pass: haptics on primary actions and Mark Taken, spring/fade transitions on the timeline and empty states, a live "now" marker on today's calendar, custom bottom-sheet headers for the add flows
+- [x] Native platform pass (via Expo's official design-system/native-ui skills): real `formSheet` presentation with an OS grab handle for Add Medication/Add Doctor Visit/Paywall (replacing a drawn handle bar), `borderCurve: "continuous"` squircle corners on cards/buttons/inputs, `boxShadow` instead of legacy shadow props, accessibility roles/labels on icon-only controls (Mark Taken, day navigation, sheet close)
 - [x] Run against a real Supabase project and a device (tested live via Expo Go)
 - [ ] Refill reminders (quantity is tracked; the "notify below threshold" job isn't wired up yet)
 - [ ] Missed-dose escalation (caregiver alert) — the Calendar visually flags a missed dose, but no notification/alert is sent to a caregiver yet
