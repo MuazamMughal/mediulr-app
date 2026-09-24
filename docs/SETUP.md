@@ -35,7 +35,17 @@ npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 ```
 
-## 4. Run the app
+## 4. Turn off email confirmation (for local testing)
+
+By default Supabase requires clicking an email confirmation link before sign-in works. During local development there's nowhere for that link to redirect to, so sign-in fails with "email not confirmed."
+
+**Authentication → Providers → Email** → toggle off **"Confirm email"** → Save.
+
+If you already have a stuck unconfirmed test account: **Authentication → Users** → find it → confirm manually (or run `update auth.users set email_confirmed_at = now() where email = '...';` in the SQL Editor).
+
+Before real launch this needs a proper fix — a deep-link redirect (`mediulr://`, already set as the app's `scheme` in `app.json`) so the confirmation email opens back into the app instead of a dead link. Turning confirmation back on then is a config toggle, not a code change.
+
+## 5. Run the app
 
 ```bash
 npm run start
@@ -43,7 +53,7 @@ npm run start
 
 This opens the Expo dev server — scan the QR code with Expo Go (iOS/Android) or press `i` / `a` for a simulator.
 
-## 5. (Later) Regenerate types from the live schema
+## 6. (Later) Regenerate types from the live schema
 
 Once the schema in Supabase is the source of truth (rather than the hand-written stand-in), regenerate `src/types/database.ts`:
 
@@ -51,7 +61,7 @@ Once the schema in Supabase is the source of truth (rather than the hand-written
 npx supabase gen types typescript --project-id <your-project-ref> > src/types/database.ts
 ```
 
-## 6. (Before launch) Subscriptions
+## 7. (Before launch) Subscriptions
 
 `app/paywall.tsx` is currently a UI stub with no real purchase flow. To wire up billing:
 

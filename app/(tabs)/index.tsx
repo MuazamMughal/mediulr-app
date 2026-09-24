@@ -1,10 +1,19 @@
 import { useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { AppText } from "../../src/components/AppText";
+import { AppButton } from "../../src/components/AppButton";
+import { EmptyState } from "../../src/components/EmptyState";
+import { SkeletonRow } from "../../src/components/Skeleton";
+import { TimelineItem } from "../../src/components/TimelineItem";
+import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useCalendarEvents } from "../../src/features/calendar/useCalendarEvents";
 import { useLogDose } from "../../src/features/medications/useMedications";
-import type { CalendarEvent } from "../../src/types/domain";
+import { Alert } from "react-native";
 
 function startOfDay(d: Date) {
   const copy = new Date(d);
@@ -16,8 +25,13 @@ function endOfDay(d: Date) {
   copy.setHours(23, 59, 59, 999);
   return copy;
 }
+function isToday(d: Date) {
+  const t = new Date();
+  return d.toDateString() === t.toDateString();
+}
 
 export default function CalendarScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const { profile } = useActiveSelfProfile();
   const [day, setDay] = useState(() => new Date());
@@ -27,130 +41,133 @@ export default function CalendarScreen() {
   const { data: events, isLoading } = useCalendarEvents(profile?.id, rangeStart, rangeEnd);
   const logDose = useLogDose();
 
+  const medicationEvents = events?.filter((e) => e.kind === "medication") ?? [];
+  const doneCount = medicationEvents.filter((e) => e.dose.status === "taken" || e.dose.status === "skipped").length;
+  const totalCount = medicationEvents.length;
+  const progress = totalCount > 0 ? doneCount / totalCount : 0;
+
+  function handleDoseAction(medicationId: string, scheduledAt: string, status: "taken" | "skipped") {
+    logDose.mutate(
+      { medicationId, scheduledAt, status },
+      { onError: (err) => Alert.alert("Couldn't update", friendlyError(err)) }
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <View style={styles.dayNav}>
-        <Pressable onPress={() => setDay((d) => new Date(d.getTime() - 86400000))}>
-          <Text style={styles.navArrow}>‹</Text>
-        </Pressable>
-        <Text style={styles.dayLabel}>
-          {day.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
-        </Text>
-        <Pressable onPress={() => setDay((d) => new Date(d.getTime() + 86400000))}>
-          <Text style={styles.navArrow}>›</Text>
-        </Pressable>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top"]}>
+      {/* Date header */}
+      <View style={styles.header}>
+        <View>
+          <AppText variant="metadata" color="tertiary">
+            {isToday(day) ? "TODAY" : day.toLocaleDateString(undefined, { weekday: "long" }).toUpperCase()}
+          </AppText>
+          <AppText variant="display" style={styles.dateTitle}>
+            {day.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+          </AppText>
+        </View>
+        <View style={styles.dayNav}>
+          <Pressable
+            hitSlop={8}
+            onPress={() => setDay((d) => new Date(d.getTime() - 86400000))}
+            style={[styles.navButton, { backgroundColor: theme.colors.surfaceSunken }]}
+          >
+            <Ionicons name="chevron-back" size={18} color={theme.colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            hitSlop={8}
+            onPress={() => setDay((d) => new Date(d.getTime() + 86400000))}
+            style={[styles.navButton, { backgroundColor: theme.colors.surfaceSunken }]}
+          >
+            <Ionicons name="chevron-forward" size={18} color={theme.colors.textSecondary} />
+          </Pressable>
+        </View>
       </View>
 
-      {isLoading && <Text style={styles.empty}>Loading…</Text>}
-      {!isLoading && (!events || events.length === 0) && (
-        <Text style={styles.empty}>Nothing scheduled today.</Text>
+      {/* Progress */}
+      {totalCount > 0 && (
+        <View style={styles.progressSection}>
+          <View style={styles.progressRow}>
+            <AppText variant="bodySmall" color="secondary">
+              {doneCount} of {totalCount} done today
+            </AppText>
+            {progress === 1 && (
+              <AppText variant="bodySmall" color="success" weight="semibold">
+                All set ✓
+              </AppText>
+            )}
+          </View>
+          <View style={[styles.progressTrack, { backgroundColor: theme.colors.surfaceSunken }]}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${progress * 100}%`, backgroundColor: theme.colors.success },
+              ]}
+            />
+          </View>
+        </View>
       )}
 
-      <FlatList
-        data={events ?? []}
-        keyExtractor={(item, i) => `${item.kind}:${item.at}:${i}`}
-        renderItem={({ item }) => (
-          <EventRow
-            event={item}
-            onMarkTaken={(medicationId, scheduledAt) =>
-              logDose.mutate({ medicationId, scheduledAt, status: "taken" })
-            }
-            onSkip={(medicationId, scheduledAt) =>
-              logDose.mutate({ medicationId, scheduledAt, status: "skipped" })
-            }
-          />
-        )}
-      />
+      {isLoading && (
+        <View>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      )}
 
-      <View style={styles.fabRow}>
-        <Pressable style={styles.fab} onPress={() => router.push("/medication/new")}>
-          <Text style={styles.fabText}>+ Medication</Text>
-        </Pressable>
-        <Pressable style={styles.fab} onPress={() => router.push("/appointment/new")}>
-          <Text style={styles.fabText}>+ Doctor visit</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
+      {!isLoading && (!events || events.length === 0) && (
+        <EmptyState
+          icon="sunny-outline"
+          title="Nothing scheduled today"
+          description="Add a medication or doctor visit and it'll show up here, right when you need it."
+          actionLabel="Add medication"
+          onAction={() => router.push("/medication/new")}
+        />
+      )}
 
-function EventRow({
-  event,
-  onMarkTaken,
-  onSkip,
-}: {
-  event: CalendarEvent;
-  onMarkTaken: (medicationId: string, scheduledAt: string) => void;
-  onSkip: (medicationId: string, scheduledAt: string) => void;
-}) {
-  const time = new Date(event.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-
-  if (event.kind === "medication") {
-    const taken = event.dose.status === "taken";
-    const skipped = event.dose.status === "skipped";
-    return (
-      <View style={[styles.row, styles.medicationRow]}>
-        <Text style={styles.time}>{time}</Text>
-        <View style={styles.rowBody}>
-          <Text style={styles.rowTitle}>
-            {event.medication.name} · {event.medication.dosage}
-          </Text>
-          {!taken && !skipped && (
-            <View style={styles.doseActions}>
-              <Pressable onPress={() => onMarkTaken(event.medication.id, event.at)}>
-                <Text style={styles.actionTaken}>Mark taken</Text>
-              </Pressable>
-              <Pressable onPress={() => onSkip(event.medication.id, event.at)}>
-                <Text style={styles.actionSkip}>Skip</Text>
-              </Pressable>
-            </View>
+      {!isLoading && events && events.length > 0 && (
+        <FlatList
+          data={events}
+          keyExtractor={(item, i) => `${item.kind}:${item.at}:${i}`}
+          renderItem={({ item }) => (
+            <TimelineItem
+              event={item}
+              onMarkTaken={(id, at) => handleDoseAction(id, at, "taken")}
+              onSkip={(id, at) => handleDoseAction(id, at, "skipped")}
+              onPress={item.kind === "medication" ? () => router.push(`/medication/${item.medication.id}`) : undefined}
+            />
           )}
-          {taken && <Text style={styles.statusTaken}>✓ Taken</Text>}
-          {skipped && <Text style={styles.statusSkipped}>Skipped</Text>}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+
+      <View style={[styles.fabRow, { borderTopColor: theme.colors.border }]}>
+        <View style={{ flex: 1 }}>
+          <AppButton label="+ Medication" variant="primary" size="md" onPress={() => router.push("/medication/new")} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <AppButton
+            label="+ Doctor visit"
+            variant="secondary"
+            size="md"
+            onPress={() => router.push("/appointment/new")}
+          />
         </View>
       </View>
-    );
-  }
-
-  if (event.kind === "appointment") {
-    return (
-      <View style={[styles.row, styles.appointmentRow]}>
-        <Text style={styles.time}>{time}</Text>
-        <View style={styles.rowBody}>
-          <Text style={styles.rowTitle}>Dr. visit · {event.appointment.providerName}</Text>
-          {event.appointment.specialty && <Text style={styles.rowSubtitle}>{event.appointment.specialty}</Text>}
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.row}>
-      <Text style={styles.time}>{time}</Text>
-      <Text style={styles.rowTitle}>{event.title}</Text>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 8 },
-  dayNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingBottom: 12 },
-  navArrow: { fontSize: 28, paddingHorizontal: 12 },
-  dayLabel: { fontSize: 17, fontWeight: "600" },
-  empty: { textAlign: "center", color: "#888", marginTop: 40 },
-  row: { flexDirection: "row", paddingVertical: 12, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  medicationRow: { borderLeftWidth: 3, borderLeftColor: "#4C8BF5" },
-  appointmentRow: { borderLeftWidth: 3, borderLeftColor: "#F5A623" },
-  time: { width: 72, color: "#666", fontVariant: ["tabular-nums"] },
-  rowBody: { flex: 1 },
-  rowTitle: { fontSize: 15, fontWeight: "500" },
-  rowSubtitle: { fontSize: 13, color: "#666", marginTop: 2 },
-  doseActions: { flexDirection: "row", gap: 16, marginTop: 6 },
-  actionTaken: { color: "#1a9e5c", fontWeight: "600" },
-  actionSkip: { color: "#999" },
-  statusTaken: { color: "#1a9e5c", marginTop: 4 },
-  statusSkipped: { color: "#999", marginTop: 4 },
-  fabRow: { flexDirection: "row", gap: 12, padding: 16 },
-  fab: { flex: 1, backgroundColor: "#4C8BF5", borderRadius: 10, paddingVertical: 14, alignItems: "center" },
-  fabText: { color: "white", fontWeight: "600" },
+  container: { flex: 1 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20, paddingTop: 8 },
+  dateTitle: { marginTop: 2 },
+  dayNav: { flexDirection: "row", gap: 8 },
+  navButton: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  progressSection: { paddingHorizontal: 20, marginTop: 20, marginBottom: 4 },
+  progressRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  progressTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
+  progressFill: { height: "100%", borderRadius: 3 },
+  listContent: { paddingTop: 12, paddingBottom: 8 },
+  fabRow: { flexDirection: "row", gap: 12, padding: 16, borderTopWidth: 1 },
 });

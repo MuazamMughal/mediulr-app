@@ -1,0 +1,59 @@
+import { Pressable, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
+import { useTheme } from "../theme/ThemeProvider";
+
+interface DoseCheckButtonProps {
+  done: boolean; // taken or skipped — anything that's no longer actionable
+  taken: boolean;
+  missed?: boolean; // scheduled time has passed and it's still pending
+  onPress: () => void;
+}
+
+/** The circular check control on a medication row — the app's single most-repeated interaction. */
+export function DoseCheckButton({ done, taken, missed = false, onPress }: DoseCheckButtonProps) {
+  const theme = useTheme();
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  function handlePress() {
+    scale.value = withSequence(withTiming(0.8, { duration: 90 }), withTiming(1, { duration: 160 }));
+    onPress();
+  }
+
+  const backgroundColor = taken ? theme.colors.success : done ? theme.colors.surfaceSunken : theme.colors.surface;
+  const borderColor = taken
+    ? theme.colors.success
+    : done
+      ? theme.colors.border
+      : missed
+        ? theme.colors.warning
+        : theme.colors.borderStrong;
+
+  return (
+    <Pressable onPress={handlePress} hitSlop={8}>
+      <Animated.View
+        style={[
+          styles.circle,
+          { backgroundColor, borderColor },
+          animatedStyle,
+        ]}
+      >
+        {taken && <Ionicons name="checkmark" size={18} color={theme.colors.textInverse} />}
+        {done && !taken && <Ionicons name="close" size={16} color={theme.colors.textTertiary} />}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  circle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

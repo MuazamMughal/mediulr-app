@@ -4,13 +4,15 @@
 
 ```
 app/                    # Expo Router screens (file-based routing)
+  index.tsx               # Auth gate — redirects to /login or /(tabs)
+  login.tsx                # Sign in / sign up
   (tabs)/
-    calendar.tsx         # Calendar Engine — day/week/month unified view
-    medications.tsx       # Medication Management list
-    appointments.tsx      # Doctor-Visit Reminders list
-    profile.tsx            # Health Profile + Family/Caregiver switcher
+    index.tsx               # Calendar Engine — unified daily timeline (the home tab)
+    medications.tsx          # Medication Management list
+    appointments.tsx          # Doctor-Visit Reminders list, grouped Upcoming/Past
+    profile.tsx                # Health Profile + Family/Caregiver switcher
   medication/
-    [id].tsx              # Medication detail/edit
+    [id].tsx              # Medication detail
     new.tsx                # Add medication flow
   appointment/
     [id].tsx
@@ -21,28 +23,37 @@ app/                    # Expo Router screens (file-based routing)
   settings.tsx
 
 src/
-  components/             # Shared UI components
+  theme/                  # Design system: colors, spacing/radius/typography tokens, ThemeProvider
+  components/             # Shared UI primitives (AppText, AppButton, AppCard, AppInput, TimelineItem, …)
   features/
     calendar/              # Calendar Engine module
     medications/            # Medication Scheduler module (recurrence logic, adherence)
     appointments/            # Doctor-Visit Reminders module
     notifications/            # Notifications Engine (local push, snooze, escalation)
     profile/                   # Health Profile + Family/Caregiver Mode
-    subscription/               # Subscription & Billing (RevenueCat)
+    subscription/               # Subscription & Billing (RevenueCat) — not yet built, see paywall.tsx
   lib/
     supabase.ts              # Supabase client
-    notifications.ts          # expo-notifications wrapper
     recurrence.ts             # Recurrence-rule engine (shared by medications + appointments)
+    friendlyError.ts          # Turns raw Supabase/network errors into human-readable alert text
   types/
-    database.ts               # Generated Supabase types
+    database.ts               # Hand-written stand-in for generated Supabase types
     domain.ts                  # App-level domain types
-  store/                     # State management (client state, cached queries)
+  store/                     # State management (client state, cached queries) — not yet needed beyond React Query
 
 supabase/
   migrations/                # SQL migrations (source of truth for schema)
 
 docs/                       # This documentation
 ```
+
+## Design system
+
+`src/theme/` holds the visual foundation — one calm, warm-neutral palette with a mild terracotta-orange accent (see `colors.ts`), a six-size type scale and spacing/radius/shadow tokens (`tokens.ts`), all exposed through `useTheme()` (`ThemeProvider.tsx`, wrapping the whole app in `app/_layout.tsx`). Every screen reads from this instead of hardcoding colors or sizes, so the whole app changes consistently from one place — to retheme, edit `colors.ts` only. Dark-mode values already exist in `colors.ts` but aren't wired up or QA'd yet — `app.json`'s `userInterfaceStyle` is pinned to `"light"` until that happens (see `docs/ROADMAP.md`).
+
+`src/components/` are the reusable building blocks screens are assembled from — `AppText`/`AppButton`/`AppCard`/`AppInput` for generic UI, `TimelineItem`/`DoseCheckButton`/`MedicationRow`/`VisitCard` for the health-specific pieces, plus `EmptyState`/`Skeleton` for loading/empty states. No screen should hand-roll a button or a card style — extend a shared component instead.
+
+**App icon**: `assets/icon.png` and the Android adaptive-icon layers are generated, not hand-drawn — `scripts/generate-icons.mjs` draws the "M" mark as a plain SVG polyline (no font dependency) and rasterizes it with `@resvg/resvg-js`. Re-run `node scripts/generate-icons.mjs` after changing the accent color in `colors.ts` to keep the icon in sync, or edit the script directly for a different mark.
 
 ## Module → feature mapping
 

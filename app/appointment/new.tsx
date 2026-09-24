@@ -1,13 +1,22 @@
 import { useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { AppText } from "../../src/components/AppText";
+import { AppInput } from "../../src/components/AppInput";
+import { AppButton } from "../../src/components/AppButton";
+import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useAddAppointment } from "../../src/features/appointments/useAppointments";
 import { requestNotificationPermission, scheduleReminder } from "../../src/features/notifications/scheduleNotifications";
 
 export default function NewAppointmentScreen() {
+  const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { profile } = useActiveSelfProfile();
   const addAppointment = useAddAppointment();
 
@@ -22,87 +31,128 @@ export default function NewAppointmentScreen() {
 
   async function handleSave() {
     if (!profile) return;
-    const appointment = await addAppointment.mutateAsync({
-      profileId: profile.id,
-      providerName: providerName.trim(),
-      specialty: specialty.trim() || undefined,
-      location: location.trim() || undefined,
-      scheduledAt: scheduledAt.toISOString(),
-      preVisitNotes: preVisitNotes.trim() || undefined,
-    });
+    try {
+      const appointment = await addAppointment.mutateAsync({
+        profileId: profile.id,
+        providerName: providerName.trim(),
+        specialty: specialty.trim() || undefined,
+        location: location.trim() || undefined,
+        scheduledAt: scheduledAt.toISOString(),
+        preVisitNotes: preVisitNotes.trim() || undefined,
+      });
 
-    const granted = await requestNotificationPermission();
-    if (granted) {
-      const dayBefore = new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000);
-      const hourBefore = new Date(scheduledAt.getTime() - 60 * 60 * 1000);
-      for (const fireAt of [dayBefore, hourBefore]) {
-        await scheduleReminder({
-          id: `${appointment.id}:${fireAt.toISOString()}`,
-          title: `Upcoming visit: ${appointment.providerName}`,
-          body: appointment.specialty ?? "Doctor visit reminder",
-          fireAt,
-        });
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        const dayBefore = new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000);
+        const hourBefore = new Date(scheduledAt.getTime() - 60 * 60 * 1000);
+        for (const fireAt of [dayBefore, hourBefore]) {
+          await scheduleReminder({
+            id: `${appointment.id}:${fireAt.toISOString()}`,
+            title: `Upcoming visit: ${appointment.providerName}`,
+            body: appointment.specialty ?? "Doctor visit reminder",
+            fireAt,
+          });
+        }
       }
-    } else {
-      Alert.alert("Notifications off", "Enable notifications in Settings to get visit reminders.");
-    }
 
-    router.back();
+      router.back();
+    } catch (err) {
+      Alert.alert("Couldn't save doctor visit", friendlyError(err));
+    }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>Provider name</Text>
-      <TextInput style={styles.input} placeholder="e.g. Dr. Patel" value={providerName} onChangeText={setProviderName} />
-
-      <Text style={styles.label}>Specialty (optional)</Text>
-      <TextInput style={styles.input} placeholder="e.g. Cardiology" value={specialty} onChangeText={setSpecialty} />
-
-      <Text style={styles.label}>Location (optional)</Text>
-      <TextInput style={styles.input} placeholder="e.g. Main St Clinic" value={location} onChangeText={setLocation} />
-
-      <Text style={styles.label}>Date & time</Text>
-      <Pressable style={styles.input} onPress={() => setShowPicker(true)}>
-        <Text>{scheduledAt.toLocaleString()}</Text>
-      </Pressable>
-      {showPicker && (
-        <DateTimePicker
-          value={scheduledAt}
-          mode="datetime"
-          onChange={(_, date) => {
-            setShowPicker(Platform.OS === "ios");
-            if (date) setScheduledAt(date);
-          }}
-        />
-      )}
-
-      <Text style={styles.label}>Notes to bring / prep (optional)</Text>
-      <TextInput
-        style={[styles.input, styles.multiline]}
-        placeholder="e.g. bring insurance card, fasting required"
-        value={preVisitNotes}
-        onChangeText={setPreVisitNotes}
-        multiline
-      />
-
-      <Pressable
-        style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
-        disabled={!canSave || addAppointment.isPending}
-        onPress={handleSave}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.saveButtonText}>{addAppointment.isPending ? "Saving…" : "Save doctor visit"}</Text>
-      </Pressable>
-    </ScrollView>
+        <AppText variant="h1" style={styles.heading}>
+          Add doctor visit
+        </AppText>
+        <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
+          We'll remind you the day before and an hour before.
+        </AppText>
+
+        <View style={styles.field}>
+          <AppInput label="Provider name" placeholder="e.g. Dr. Patel" value={providerName} onChangeText={setProviderName} autoFocus />
+        </View>
+
+        <View style={styles.field}>
+          <AppInput label="Specialty (optional)" placeholder="e.g. Cardiology" value={specialty} onChangeText={setSpecialty} />
+        </View>
+
+        <View style={styles.field}>
+          <AppInput label="Location (optional)" placeholder="e.g. Main St Clinic" value={location} onChangeText={setLocation} />
+        </View>
+
+        <View style={styles.field}>
+          <AppText variant="caption" color="secondary" style={styles.label}>
+            Date & time
+          </AppText>
+          <Pressable
+            onPress={() => setShowPicker(true)}
+            style={[styles.dateButton, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+          >
+            <Ionicons name="calendar-outline" size={18} color={theme.colors.visit} />
+            <AppText variant="body">{scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</AppText>
+          </Pressable>
+          {showPicker && (
+            <DateTimePicker
+              value={scheduledAt}
+              mode="datetime"
+              onChange={(_, date) => {
+                setShowPicker(Platform.OS === "ios");
+                if (date) setScheduledAt(date);
+              }}
+            />
+          )}
+        </View>
+
+        <View style={styles.field}>
+          <AppInput
+            label="Notes to bring / prep (optional)"
+            placeholder="e.g. bring insurance card, fasting required"
+            value={preVisitNotes}
+            onChangeText={setPreVisitNotes}
+            multiline
+            style={styles.multiline}
+          />
+        </View>
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16, borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
+        <AppButton
+          label="Save doctor visit"
+          onPress={handleSave}
+          disabled={!canSave}
+          loading={addAppointment.isPending}
+        />
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
-  label: { fontSize: 13, color: "#888", marginTop: 16, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: "#ddd", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, justifyContent: "center" },
-  multiline: { minHeight: 80, textAlignVertical: "top" },
-  saveButton: { marginTop: 28, backgroundColor: "#F5A623", borderRadius: 10, paddingVertical: 14, alignItems: "center" },
-  saveButtonDisabled: { opacity: 0.5 },
-  saveButtonText: { color: "white", fontWeight: "600", fontSize: 16 },
+  heading: { marginBottom: 4 },
+  subheading: { marginBottom: 24 },
+  field: { marginBottom: 18 },
+  label: { marginBottom: 8, marginLeft: 2 },
+  dateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  multiline: { minHeight: 90, textAlignVertical: "top" },
+  footer: { padding: 16, borderTopWidth: 1 },
 });

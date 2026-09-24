@@ -1,55 +1,106 @@
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { AppText } from "../../src/components/AppText";
+import { AppCard } from "../../src/components/AppCard";
+import { AppButton } from "../../src/components/AppButton";
+import { Divider } from "../../src/components/Divider";
+import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useArchiveMedication, useMedications } from "../../src/features/medications/useMedications";
 import { describeRecurrence } from "../../src/features/medications/describeRecurrence";
 
-export default function MedicationDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const { profile } = useActiveSelfProfile();
-  const { data: medications } = useMedications(profile?.id);
-  const archiveMedication = useArchiveMedication(profile?.id);
-
-  const medication = medications?.find((m) => m.id === id);
-  if (!medication) return <View style={styles.container}><Text>Loading…</Text></View>;
-
+function InfoRow({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; value: string }) {
+  const theme = useTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.name}>{medication.name}</Text>
-      <Text style={styles.detail}>{medication.dosage}</Text>
-      <Text style={styles.detail}>{describeRecurrence(medication.recurrenceRule)}</Text>
-      {medication.instructions && <Text style={styles.detail}>{medication.instructions}</Text>}
-      {medication.quantityOnHand != null && (
-        <Text style={styles.detail}>{medication.quantityOnHand} doses remaining</Text>
-      )}
-
-      <Pressable
-        style={styles.archiveButton}
-        onPress={() =>
-          Alert.alert("Stop this medication?", "This stops future reminders. It won't delete past history.", [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Stop",
-              style: "destructive",
-              onPress: async () => {
-                await archiveMedication.mutateAsync(medication.id);
-                router.back();
-              },
-            },
-          ])
-        }
-      >
-        <Text style={styles.archiveButtonText}>Stop this medication</Text>
-      </Pressable>
+    <View style={styles.infoRow}>
+      <View style={[styles.infoIcon, { backgroundColor: theme.colors.medicationSoft }]}>
+        <Ionicons name={icon} size={16} color={theme.colors.medication} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <AppText variant="metadata" color="tertiary">
+          {label}
+        </AppText>
+        <AppText variant="bodyMedium">{value}</AppText>
+      </View>
     </View>
   );
 }
 
+export default function MedicationDetailScreen() {
+  const theme = useTheme();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { profile } = useActiveSelfProfile();
+  const { data: medications, isLoading } = useMedications(profile?.id);
+  const archiveMedication = useArchiveMedication(profile?.id);
+
+  const medication = medications?.find((m) => m.id === id);
+
+  if (isLoading || !medication) {
+    return <View style={[styles.container, { backgroundColor: theme.colors.background }]} />;
+  }
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={styles.content}>
+      <View style={[styles.hero, { backgroundColor: theme.colors.medicationSoft }]}>
+        <Ionicons name="medkit" size={22} color={theme.colors.medication} />
+      </View>
+      <AppText variant="h1" style={styles.name}>
+        {medication.name}
+      </AppText>
+      <AppText variant="body" color="secondary">
+        {medication.dosage}
+      </AppText>
+
+      <AppCard style={styles.card}>
+        <InfoRow icon="time-outline" label="Frequency" value={describeRecurrence(medication.recurrenceRule)} />
+        <Divider style={styles.divider} />
+        <InfoRow icon="document-text-outline" label="Instructions" value={medication.instructions || "None noted"} />
+        {medication.quantityOnHand != null && (
+          <>
+            <Divider style={styles.divider} />
+            <InfoRow icon="cube-outline" label="Quantity remaining" value={`${medication.quantityOnHand} doses`} />
+          </>
+        )}
+      </AppCard>
+
+      <View style={styles.destructive}>
+        <AppButton
+          label="Stop this medication"
+          variant="destructive"
+          onPress={() =>
+            Alert.alert("Stop this medication?", "This stops future reminders. It won't delete past history.", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Stop",
+                style: "destructive",
+                onPress: async () => {
+                  try {
+                    await archiveMedication.mutateAsync(medication.id);
+                    router.back();
+                  } catch (err) {
+                    Alert.alert("Couldn't stop medication", friendlyError(err));
+                  }
+                },
+              },
+            ])
+          }
+        />
+      </View>
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  name: { fontSize: 22, fontWeight: "700", marginBottom: 8 },
-  detail: { fontSize: 15, color: "#444", marginBottom: 4 },
-  archiveButton: { marginTop: 32, paddingVertical: 14, alignItems: "center" },
-  archiveButtonText: { color: "#d9534f", fontWeight: "600" },
+  container: { flex: 1 },
+  content: { padding: 20 },
+  hero: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  name: { marginBottom: 2 },
+  card: { marginTop: 24 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 },
+  infoIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  divider: { marginVertical: 12 },
+  destructive: { marginTop: 32 },
 });

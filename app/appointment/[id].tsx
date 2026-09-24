@@ -1,10 +1,18 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { AppText } from "../../src/components/AppText";
+import { AppCard } from "../../src/components/AppCard";
+import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
 import { useAppointments, useUpdatePostVisitNotes } from "../../src/features/appointments/useAppointments";
 
 export default function AppointmentDetailScreen() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useActiveSelfProfile();
   const { data: appointments } = useAppointments(profile?.id);
@@ -13,49 +21,106 @@ export default function AppointmentDetailScreen() {
   const appointment = appointments?.find((a) => a.id === id);
   const [notes, setNotes] = useState(appointment?.postVisitNotes ?? "");
 
-  if (!appointment) return <View style={styles.container}><Text>Loading…</Text></View>;
+  if (!appointment) return <View style={[styles.container, { backgroundColor: theme.colors.background }]} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.name}>{appointment.providerName}</Text>
-      {appointment.specialty && <Text style={styles.detail}>{appointment.specialty}</Text>}
-      {appointment.location && <Text style={styles.detail}>{appointment.location}</Text>}
-      <Text style={styles.detail}>{new Date(appointment.scheduledAt).toLocaleString()}</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.hero, { backgroundColor: theme.colors.visitSoft }]}>
+          <Ionicons name="medical" size={22} color={theme.colors.visit} />
+        </View>
+        <AppText variant="h1" style={styles.name}>
+          {appointment.providerName}
+        </AppText>
+        {appointment.specialty && (
+          <AppText variant="body" color="secondary">
+            {appointment.specialty}
+          </AppText>
+        )}
 
-      {appointment.preVisitNotes && (
-        <>
-          <Text style={styles.label}>Before your visit</Text>
-          <Text style={styles.detail}>{appointment.preVisitNotes}</Text>
-        </>
-      )}
+        <AppCard style={styles.card}>
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={16} color={theme.colors.textTertiary} />
+            <AppText variant="bodyMedium">
+              {new Date(appointment.scheduledAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+            </AppText>
+          </View>
+          {appointment.location && (
+            <View style={styles.detailRow}>
+              <Ionicons name="location-outline" size={16} color={theme.colors.textTertiary} />
+              <AppText variant="bodyMedium">{appointment.location}</AppText>
+            </View>
+          )}
+        </AppCard>
 
-      <Text style={styles.label}>What the doctor said (after your visit)</Text>
-      <TextInput
-        style={styles.multiline}
-        multiline
-        placeholder="Notes, next steps…"
-        value={notes}
-        onChangeText={setNotes}
-        onBlur={() => {
-          if (notes !== appointment.postVisitNotes) {
-            updateNotes.mutate({ id: appointment.id, notes });
-          }
-        }}
-      />
+        {appointment.preVisitNotes && (
+          <View style={styles.section}>
+            <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
+              BEFORE YOUR VISIT
+            </AppText>
+            <AppCard>
+              <AppText variant="body">{appointment.preVisitNotes}</AppText>
+            </AppCard>
+          </View>
+        )}
 
-      <Text style={styles.hint}>
-        This stays on your device and account only — Mediulr never sends visit notes to a provider.
-      </Text>
-    </ScrollView>
+        <View style={styles.section}>
+          <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
+            WHAT THE DOCTOR SAID
+          </AppText>
+          <TextInput
+            style={[
+              styles.notesInput,
+              { borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.textPrimary },
+            ]}
+            placeholder="Notes, next steps…"
+            placeholderTextColor={theme.colors.textTertiary}
+            multiline
+            value={notes}
+            onChangeText={setNotes}
+            onBlur={() => {
+              if (notes !== appointment.postVisitNotes) {
+                updateNotes.mutate(
+                  { id: appointment.id, notes },
+                  { onError: (err) => Alert.alert("Couldn't save notes", friendlyError(err)) }
+                );
+              }
+            }}
+          />
+        </View>
+
+        <AppText variant="caption" color="tertiary" style={styles.hint}>
+          This stays on your device and account only — Mediulr never sends visit notes to a provider.
+        </AppText>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
-  name: { fontSize: 22, fontWeight: "700", marginBottom: 8 },
-  detail: { fontSize: 15, color: "#444", marginBottom: 4 },
-  label: { fontSize: 13, color: "#888", marginTop: 20, marginBottom: 6 },
-  multiline: { borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 12, minHeight: 100, textAlignVertical: "top", fontSize: 15 },
-  hint: { marginTop: 16, fontSize: 12, color: "#999" },
+  hero: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  name: { marginBottom: 2 },
+  card: { marginTop: 24, gap: 12 },
+  detailRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  section: { marginTop: 24 },
+  sectionLabel: { marginBottom: 8, letterSpacing: 0.4 },
+  notesInput: {
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 110,
+    textAlignVertical: "top",
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  hint: { marginTop: 20, textAlign: "center", lineHeight: 17 },
 });

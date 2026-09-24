@@ -1,73 +1,120 @@
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "../src/theme/ThemeProvider";
+import { AppText } from "../src/components/AppText";
+import { AppInput } from "../src/components/AppInput";
+import { AppButton } from "../src/components/AppButton";
+import { friendlyError } from "../src/lib/friendlyError";
 import { supabase } from "../src/lib/supabase";
 
 export default function LoginScreen() {
+  const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [loading, setLoading] = useState(false);
 
+  const emailValid = /\S+@\S+\.\S+/.test(email.trim());
+  const canSubmit = emailValid && password.length >= 6;
+
   async function handleSubmit() {
+    if (!canSubmit) return;
     setLoading(true);
     try {
       const { error } =
         mode === "signIn"
-          ? await supabase.auth.signInWithPassword({ email, password })
-          : await supabase.auth.signUp({ email, password });
+          ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
+          : await supabase.auth.signUp({ email: email.trim(), password });
       if (error) throw error;
       router.replace(mode === "signUp" ? "/onboarding" : "/(tabs)");
     } catch (err) {
-      Alert.alert("Couldn't sign in", err instanceof Error ? err.message : "Unknown error");
+      Alert.alert("Couldn't sign in", friendlyError(err));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Mediulr</Text>
-      <Text style={styles.subtitle}>Your medications, doctor visits, and calendar — in one place.</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 32 }]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={[styles.logo, { backgroundColor: theme.colors.accentSoft }]}>
+          <Ionicons name="medical" size={26} color={theme.colors.accent} />
+        </View>
+        <AppText variant="display" style={styles.title}>
+          Mediulr
+        </AppText>
+        <AppText variant="body" color="secondary" style={styles.subtitle}>
+          Your medications, doctor visits, and calendar — in one calm place.
+        </AppText>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <View style={styles.field}>
+          <AppInput
+            label="Email"
+            placeholder="you@example.com"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+        <View style={styles.field}>
+          <AppInput
+            label="Password"
+            placeholder="At least 6 characters"
+            secureTextEntry={!showPassword}
+            autoComplete="password"
+            value={password}
+            onChangeText={setPassword}
+          />
+          <Pressable onPress={() => setShowPassword((s) => !s)} style={styles.showPassword} hitSlop={8}>
+            <AppText variant="caption" color="accent">
+              {showPassword ? "Hide password" : "Show password"}
+            </AppText>
+          </Pressable>
+        </View>
 
-      <Pressable style={styles.primaryButton} disabled={loading} onPress={handleSubmit}>
-        <Text style={styles.primaryButtonText}>
-          {loading ? "Please wait…" : mode === "signIn" ? "Sign in" : "Create account"}
-        </Text>
-      </Pressable>
+        <View style={styles.submitButton}>
+          <AppButton
+            label={mode === "signIn" ? "Sign in" : "Create account"}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+            loading={loading}
+          />
+        </View>
 
-      <Pressable onPress={() => setMode((m) => (m === "signIn" ? "signUp" : "signIn"))}>
-        <Text style={styles.switchText}>
-          {mode === "signIn" ? "New here? Create an account" : "Already have an account? Sign in"}
-        </Text>
-      </Pressable>
-    </View>
+        <Pressable onPress={() => setMode((m) => (m === "signIn" ? "signUp" : "signIn"))} style={styles.switchLink}>
+          <AppText variant="bodySmall" color="secondary">
+            {mode === "signIn" ? "New here? " : "Already have an account? "}
+            <AppText variant="bodySmall" color="accent" weight="semibold">
+              {mode === "signIn" ? "Create an account" : "Sign in"}
+            </AppText>
+          </AppText>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 28 },
-  title: { fontSize: 32, fontWeight: "800", textAlign: "center" },
-  subtitle: { textAlign: "center", color: "#888", marginTop: 8, marginBottom: 32 },
-  input: { borderWidth: 1, borderColor: "#ddd", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, fontSize: 16, marginBottom: 12 },
-  primaryButton: { backgroundColor: "#4C8BF5", borderRadius: 10, paddingVertical: 16, alignItems: "center", marginTop: 8 },
-  primaryButtonText: { color: "white", fontWeight: "600", fontSize: 16 },
-  switchText: { textAlign: "center", color: "#4C8BF5", marginTop: 20 },
+  content: { paddingHorizontal: 28, flexGrow: 1 },
+  logo: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  title: { marginBottom: 8 },
+  subtitle: { marginBottom: 40, lineHeight: 22 },
+  field: { marginBottom: 16 },
+  showPassword: { alignSelf: "flex-end", marginTop: 8 },
+  submitButton: { marginTop: 8 },
+  switchLink: { alignItems: "center", marginTop: 24 },
 });
