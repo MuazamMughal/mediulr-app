@@ -5,6 +5,7 @@ import { occurrencesInRange } from "../src/lib/recurrence";
 import { dosesInRange, isActiveMedication, medicationWindow } from "../src/features/medications/schedule";
 import { describeCourse } from "../src/features/medications/describeCourse";
 import { MAX_SCHEDULED_REMINDERS, planReminders } from "../src/features/notifications/plan";
+import { buildMonthOverview } from "../src/features/calendar/overview";
 import type { Appointment, DoseLog, Medication, Profile } from "../src/types/domain";
 
 // --- helpers ------------------------------------------------------------------------------------
@@ -231,4 +232,31 @@ test("planReminders names the family member for dependents, not for yourself", (
   const plan = planReminders({ medications: [med({ id: "mine" }), med({ id: "hers", profileId: "p2" })], appointments: [], profiles, now });
   assert.ok(plan.find((r) => r.id.includes("hers"))?.body.includes("Maria"));
   assert.ok(!plan.find((r) => r.id.includes("mine"))?.body.includes("Maria"));
+});
+
+// --- month overview (the calendar's dots) --------------------------------------------------------
+test("month overview: counts doses, taken, missed and visits per local day", () => {
+  const now = local(2026, 9, 26, 12, 0); // midday on the 26th
+  const m = med({ endDate: "2026-09-27" }); // 25, 26, 27 — three doses each
+  const logs: DoseLog[] = [
+    { id: "a", medicationId: "m1", scheduledAt: local(2026, 9, 25, 8).toISOString().replace("Z", "+00:00"), status: "taken", loggedAt: null },
+    { id: "b", medicationId: "m1", scheduledAt: local(2026, 9, 25, 14).toISOString(), status: "skipped", loggedAt: null },
+  ];
+  const visit: Appointment = {
+    id: "v", profileId: "p1", providerName: "Dr. Patel", specialty: null, location: null,
+    scheduledAt: local(2026, 9, 26, 10, 0).toISOString(), preVisitNotes: null, postVisitNotes: null,
+  };
+  const o = buildMonthOverview({ medications: [m], appointments: [visit], logs, rangeStart: local(2026, 9, 1), rangeEnd: local(2026, 9, 30, 23, 59), now });
+
+  assert.deepEqual(o["2026-09-25"], { doses: 3, taken: 1, skipped: 1, missed: 1, visits: 0 }); // 8pm dose unanswered and past
+  assert.deepEqual(o["2026-09-26"], { doses: 3, taken: 0, skipped: 0, missed: 1, visits: 1 }); // only the 8am dose has passed at noon
+  assert.deepEqual(o["2026-09-27"], { doses: 3, taken: 0, skipped: 0, missed: 0, visits: 0 }); // future, nothing missed
+  assert.equal(o["2026-09-28"], undefined); // course over: the calendar is clear
+  assert.equal(o["2026-09-24"], undefined); // before it started
+});
+
+test("month overview: a late-night dose stays on its own local day", () => {
+  const m = med({ recurrenceRule: { type: "times_per_day", count: 1, at: ["23:30"] }, endDate: "2026-09-25" });
+  const o = buildMonthOverview({ medications: [m], appointments: [], logs: [], rangeStart: local(2026, 9, 1), rangeEnd: local(2026, 9, 30, 23, 59), now: local(2026, 9, 1) });
+  assert.deepEqual(Object.keys(o), ["2026-09-25"]);
 });

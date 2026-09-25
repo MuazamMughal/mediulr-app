@@ -1,27 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "../../lib/supabase";
 import { listAppointments } from "../appointments/api";
-import { listMedications } from "../medications/api";
+import { listDoseLogsInRange, listMedications } from "../medications/api";
 import { dosesInRange } from "../medications/schedule";
-import type { CalendarEvent, DoseLog } from "../../types/domain";
-
-async function listDoseLogsInRange(medicationIds: string[], start: Date, end: Date): Promise<DoseLog[]> {
-  if (medicationIds.length === 0) return [];
-  const { data, error } = await supabase
-    .from("dose_logs")
-    .select("*")
-    .in("medication_id", medicationIds)
-    .gte("scheduled_at", start.toISOString())
-    .lte("scheduled_at", end.toISOString());
-  if (error) throw error;
-  return data.map((row) => ({
-    id: row.id,
-    medicationId: row.medication_id,
-    scheduledAt: row.scheduled_at,
-    status: row.status,
-    loggedAt: row.logged_at,
-  }));
-}
+import type { CalendarEvent } from "../../types/domain";
 
 /**
  * The Calendar Engine: merges medication doses and appointments into one time-sorted list for the range.
