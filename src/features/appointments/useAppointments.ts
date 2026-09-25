@@ -25,7 +25,7 @@ export function useAddAppointment() {
 export function useUpdatePostVisitNotes(_profileId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, notes }: { id: string; notes: string }) => updatePostVisitNotes(id, notes),
+    mutationFn: ({ id, notes }: { id: string; notes: string | null }) => updatePostVisitNotes(id, notes),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["appointments"] }),
   });
 }

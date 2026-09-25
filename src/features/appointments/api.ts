@@ -59,7 +59,7 @@ export async function addAppointment(input: NewAppointmentInput): Promise<Appoin
   return fromRow(data);
 }
 
-export async function updatePostVisitNotes(id: string, notes: string): Promise<void> {
+export async function updatePostVisitNotes(id: string, notes: string | null): Promise<void> {
   const { error } = await supabase.from("appointments").update({ post_visit_notes: notes }).eq("id", id);
   if (error) throw error;
 }

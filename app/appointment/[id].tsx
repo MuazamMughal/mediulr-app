@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,7 +18,38 @@ export default function AppointmentDetailScreen() {
   const updateNotes = useUpdatePostVisitNotes(profile?.id);
 
   const appointment = appointments?.find((a) => a.id === id);
-  const [notes, setNotes] = useState(appointment?.postVisitNotes ?? "");
+
+  // Start empty and adopt the saved notes once they've loaded. `dirty` means "the user has typed something not yet
+  // saved" — only then may we write, so opening this screen before the data arrives can never overwrite real notes with blank.
+  const [notes, setNotes] = useState("");
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (appointment && !dirty) setNotes(appointment.postVisitNotes ?? "");
+  }, [appointment?.id, appointment?.postVisitNotes, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leaving the screen mid-typing (swipe back) doesn't always fire onBlur, so flush unsaved text on unmount too.
+  const pending = useRef({ id: undefined as string | undefined, notes: "", dirty: false });
+  pending.current = { id: appointment?.id, notes, dirty };
+  const mutateRef = useRef(updateNotes.mutate);
+  mutateRef.current = updateNotes.mutate;
+  useEffect(
+    () => () => {
+      const p = pending.current;
+      if (p.dirty && p.id) mutateRef.current({ id: p.id, notes: p.notes.trim() || null });
+    },
+    []
+  );
+
+  function saveNotes() {
+    if (!appointment || !dirty) return;
+    updateNotes.mutate(
+      { id: appointment.id, notes: notes.trim() || null },
+      {
+        onSuccess: () => setDirty(false),
+        onError: (err) => Alert.alert("Couldn't save notes", friendlyError(err)),
+      }
+    );
+  }
 
   if (!appointment) return <View style={[styles.container, { backgroundColor: theme.colors.background }]} />;
 
@@ -83,15 +114,11 @@ export default function AppointmentDetailScreen() {
             placeholderTextColor={theme.colors.textTertiary}
             multiline
             value={notes}
-            onChangeText={setNotes}
-            onBlur={() => {
-              if (notes !== appointment.postVisitNotes) {
-                updateNotes.mutate(
-                  { id: appointment.id, notes },
-                  { onError: (err) => Alert.alert("Couldn't save notes", friendlyError(err)) }
-                );
-              }
+            onChangeText={(text) => {
+              setNotes(text);
+              setDirty(true);
             }}
+            onBlur={saveNotes}
           />
         </View>
 
