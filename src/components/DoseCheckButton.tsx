@@ -50,19 +50,20 @@ export function DoseCheckButton({ done, taken, missed = false, onPress }: DoseCh
       accessibilityLabel={taken ? "Taken" : done ? "Skipped" : "Mark taken"}
       accessibilityState={{ disabled: done }}
     >
-      <Animated.View style={[styles.circle, { backgroundColor, borderColor }, animatedStyle]}>
+      <Animated.View style={[styles.circle, theme.simple && styles.circleSimple, { backgroundColor, borderColor }, animatedStyle]}>
         {taken && (
           <Animated.View entering={ZoomIn.duration(220).springify().damping(12)}>
-            <Ionicons name="checkmark" size={18} color={theme.colors.textInverse} />
+            <Ionicons name="checkmark" size={theme.simple ? 26 : 18} color={theme.colors.textInverse} />
           </Animated.View>
         )}
-        {done && !taken && <Ionicons name="close" size={16} color={theme.colors.textTertiary} />}
+        {done && !taken && <Ionicons name="close" size={theme.simple ? 22 : 16} color={theme.colors.textTertiary} />}
       </Animated.View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  circleSimple: { width: 46, height: 46, borderRadius: 23 },
   circle: {
     width: 30,
     height: 30,

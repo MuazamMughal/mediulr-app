@@ -47,6 +47,10 @@ Run `supabase/migrations/0003_nutrition_exercise.sql` too. It adds the `food_ent
 
 Run `supabase/migrations/0004_guardians.sql` as well. It adds the `guardians` table behind the "Guardian" row on the Medications tab and the "Tell Mom" button on missed doses. Until it's applied that row simply doesn't appear, and everything else works.
 
+### Fifth migration (refill countdown)
+
+Run `supabase/migrations/0005_refill_countdown.sql`. It makes each taken dose count a medication's supply down (see [`RELIABILITY.md`](RELIABILITY.md)). Until it's applied, supply numbers simply won't decrease; nothing else is affected.
+
 ## 4. Turn off email confirmation (for local testing)
 
 By default Supabase requires clicking an email confirmation link before sign-in works. During local development there's nowhere for that link to redirect to, so sign-in fails with "email not confirmed."

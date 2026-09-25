@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../src/theme/ThemeProvider";
@@ -6,13 +6,57 @@ import { AppText } from "../src/components/AppText";
 import { AppCard } from "../src/components/AppCard";
 import { supabase } from "../src/lib/supabase";
 import { friendlyError } from "../src/lib/friendlyError";
+import { usePreferences } from "../src/features/preferences/Preferences";
 
 export default function SettingsScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { prefs, setPreference } = usePreferences();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <ScrollView style={{ backgroundColor: theme.colors.background }} contentContainerStyle={styles.container}>
+      <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
+        EASIER TO USE
+      </AppText>
+      <AppCard padded={false}>
+        <View style={styles.row}>
+          <Ionicons name="text-outline" size={18} color={theme.colors.textSecondary} />
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyMedium">Simple mode</AppText>
+            <AppText variant="caption" color="secondary" style={{ marginTop: 2, lineHeight: 17 }}>
+              Larger text and buttons, and only the essentials on screen.
+            </AppText>
+          </View>
+          <Switch
+            value={prefs.simpleMode}
+            onValueChange={(v) => setPreference("simpleMode", v)}
+            trackColor={{ true: theme.colors.accent, false: theme.colors.borderStrong }}
+            accessibilityLabel="Simple mode"
+          />
+        </View>
+      </AppCard>
+
+      <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
+        REMINDERS
+      </AppText>
+      <AppCard padded={false}>
+        <View style={styles.row}>
+          <Ionicons name="notifications-outline" size={18} color={theme.colors.textSecondary} />
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyMedium">Follow-up reminders</AppText>
+            <AppText variant="caption" color="secondary" style={{ marginTop: 2, lineHeight: 17 }}>
+              If a dose is left unanswered, nudge again 15 and 30 minutes later, and offer to tell a guardian.
+            </AppText>
+          </View>
+          <Switch
+            value={prefs.followUps}
+            onValueChange={(v) => setPreference("followUps", v)}
+            trackColor={{ true: theme.colors.accent, false: theme.colors.borderStrong }}
+            accessibilityLabel="Follow-up reminders"
+          />
+        </View>
+      </AppCard>
+
       <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
         ACCOUNT
       </AppText>
@@ -81,12 +125,12 @@ export default function SettingsScreen() {
           </AppText>
         </Pressable>
       </AppCard>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
+  container: { padding: 20, paddingBottom: 48 },
   sectionLabel: { marginBottom: 8, marginLeft: 2, marginTop: 8, letterSpacing: 0.4 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
 });

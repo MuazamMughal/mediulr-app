@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
+import { AppButton } from "../../src/components/AppButton";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useAppointments, useUpdatePostVisitNotes } from "../../src/features/appointments/useAppointments";
@@ -12,12 +13,18 @@ import { useAppointments, useUpdatePostVisitNotes } from "../../src/features/app
 export default function AppointmentDetailScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profile } = useActiveProfile();
-  const { data: appointments } = useAppointments(profile?.id);
+  const { data: appointments, isSuccess } = useAppointments(profile?.id);
   const updateNotes = useUpdatePostVisitNotes(profile?.id);
 
   const appointment = appointments?.find((a) => a.id === id);
+
+  // Deleted (from the edit sheet): there's nothing left to show, so go back to the list.
+  useEffect(() => {
+    if (isSuccess && !appointment) router.back();
+  }, [isSuccess, appointment]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Start empty and adopt the saved notes once they've loaded. `dirty` means "the user has typed something not yet
   // saved" — only then may we write, so opening this screen before the data arrives can never overwrite real notes with blank.
@@ -120,6 +127,10 @@ export default function AppointmentDetailScreen() {
             }}
             onBlur={saveNotes}
           />
+        </View>
+
+        <View style={{ marginTop: 24 }}>
+          <AppButton label="Edit visit" variant="secondary" onPress={() => router.push(`/appointment/edit/${appointment.id}`)} />
         </View>
 
         <AppText variant="caption" color="tertiary" style={styles.hint}>

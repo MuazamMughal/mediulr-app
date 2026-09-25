@@ -1,5 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addMedication, archiveMedication, listMedications, logDose, type NewMedicationInput } from "./api";
+import {
+  addMedication,
+  archiveMedication,
+  deleteMedication,
+  listMedications,
+  logDose,
+  replaceMedicationSchedule,
+  updateMedication,
+  type MedicationEdit,
+  type NewMedicationInput,
+} from "./api";
 import { isActiveMedication } from "./schedule";
 import type { DoseStatus, Medication } from "../../types/domain";
 
@@ -48,6 +58,30 @@ export function useAddMedication() {
   });
 }
 
+export function useUpdateMedication() {
+  const invalidate = useInvalidateMedicationData();
+  return useMutation({
+    mutationFn: ({ id, edit }: { id: string; edit: MedicationEdit }) => updateMedication(id, edit),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReplaceMedicationSchedule() {
+  const invalidate = useInvalidateMedicationData();
+  return useMutation({
+    mutationFn: ({ oldId, next }: { oldId: string; next: NewMedicationInput }) => replaceMedicationSchedule(oldId, next),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteMedication() {
+  const invalidate = useInvalidateMedicationData();
+  return useMutation({
+    mutationFn: (id: string) => deleteMedication(id),
+    onSuccess: invalidate,
+  });
+}
+
 export function useArchiveMedication(_profileId?: string) {
   const invalidate = useInvalidateMedicationData();
   return useMutation({
@@ -68,6 +102,11 @@ export function useLogDose() {
       scheduledAt: string;
       status: DoseStatus;
     }) => logDose(medicationId, scheduledAt, status),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["calendarEvents"] }),
+    // A taken dose also counts the supply down, so the medication list refreshes too.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["calendarEvents"] }),
+        queryClient.invalidateQueries({ queryKey: ["medications"] }),
+      ]),
   });
 }

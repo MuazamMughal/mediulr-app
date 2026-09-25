@@ -65,3 +65,10 @@ export async function deleteGuardian(id: string): Promise<void> {
   const { error } = await supabase.from("guardians").delete().eq("id", id);
   if (error) throw error;
 }
+
+/** Every guardian across the profiles this user manages (RLS scopes it). Used to decide which reminders can offer "Tell guardian". */
+export async function listAllGuardiansForUser(): Promise<Guardian[]> {
+  const { data, error } = await supabase.from("guardians").select("*");
+  if (error) throw error;
+  return data.map(fromRow);
+}

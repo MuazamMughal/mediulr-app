@@ -55,6 +55,7 @@ export function AppButton({
       style={({ pressed }) => [
         styles.base,
         size === "lg" ? styles.lg : styles.md,
+        theme.simple && styles.simple,
         { backgroundColor: backgrounds[variant] },
         fullWidth && styles.fullWidth,
         isDisabled && styles.disabled,
@@ -82,6 +83,7 @@ const styles = StyleSheet.create({
   },
   lg: { paddingVertical: 16, paddingHorizontal: 20 },
   md: { paddingVertical: 12, paddingHorizontal: 16 },
+  simple: { paddingVertical: 20, minHeight: 60 },
   fullWidth: { alignSelf: "stretch" },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.85, transform: [{ scale: 0.985 }] },

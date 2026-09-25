@@ -90,7 +90,55 @@ export async function archiveMedication(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function logDose(medicationId: string, scheduledAt: string, status: DoseStatus): Promise<DoseLog> {
+/** `loggedAt` is when the person answered — pass it when saving late from the offline queue so history keeps the real time. */
+/** Fields that can change without rewriting history: they don't alter when past doses were due. */
+export interface MedicationEdit {
+  name: string;
+  dosage: string;
+  instructions: string | null;
+  quantityOnHand: number | null;
+  refillThreshold: number | null;
+  endDate: string | null;
+}
+
+export async function updateMedication(id: string, edit: MedicationEdit): Promise<void> {
+  const { error } = await supabase
+    .from("medications")
+    .update({
+      name: edit.name,
+      dosage: edit.dosage,
+      instructions: edit.instructions,
+      quantity_on_hand: edit.quantityOnHand,
+      refill_threshold: edit.refillThreshold,
+      end_date: edit.endDate,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Changing when doses are due would rewrite every past day (doses are derived from the schedule), so a schedule
+ * change stops the old medication and starts a new one from now: history stays exactly as it was.
+ * The new one is created first; if stopping the old one then fails, the new one is removed again.
+ */
+export async function replaceMedicationSchedule(oldId: string, next: NewMedicationInput): Promise<Medication> {
+  const created = await addMedication(next);
+  try {
+    await archiveMedication(oldId);
+  } catch (err) {
+    await supabase.from("medications").delete().eq("id", created.id);
+    throw err;
+  }
+  return created;
+}
+
+/** Permanently removes the medication and, by cascade, every dose answer recorded for it. */
+export async function deleteMedication(id: string): Promise<void> {
+  const { error } = await supabase.from("medications").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function logDose(medicationId: string, scheduledAt: string, status: DoseStatus, loggedAt?: string): Promise<DoseLog> {
   const { data, error } = await supabase
     .from("dose_logs")
     .upsert(
@@ -98,7 +146,7 @@ export async function logDose(medicationId: string, scheduledAt: string, status:
         medication_id: medicationId,
         scheduled_at: scheduledAt,
         status,
-        logged_at: status === "pending" ? null : new Date().toISOString(),
+        logged_at: status === "pending" ? null : (loggedAt ?? new Date().toISOString()),
       },
       { onConflict: "medication_id,scheduled_at" }
     )

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,8 +18,14 @@ import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useCalendarEvents } from "../../src/features/calendar/useCalendarEvents";
 import { useMonthOverview } from "../../src/features/calendar/useMonthOverview";
-import { useAllMedications, useLogDose } from "../../src/features/medications/useMedications";
-import { cancelReminder } from "../../src/features/notifications/scheduleNotifications";
+import { useAllMedications } from "../../src/features/medications/useMedications";
+import { cancelDoseReminders } from "../../src/features/notifications/scheduleNotifications";
+import { submitDose } from "../../src/features/offline/submitDose";
+import { usePendingDoses } from "../../src/features/offline/doseOutbox";
+import { applyPendingDoses } from "../../src/features/offline/overlay";
+import { refillStatus } from "../../src/features/medications/refill";
+import { SyncBanner } from "../../src/components/SyncBanner";
+import { RefillBanner, type LowSupply } from "../../src/components/RefillBanner";
 import { endOfLocalDay, startOfLocalDay, toLocalDateString } from "../../src/lib/dates";
 import { useAppointments } from "../../src/features/appointments/useAppointments";
 import { useFoodForRange, useHasAnyFood } from "../../src/features/nutrition/useFood";
@@ -53,7 +59,9 @@ export default function CalendarScreen() {
   const { profile, isViewingSelf } = useActiveProfile();
   const [day, setDay] = useState(() => new Date());
   const [month, setMonth] = useState(() => new Date());
-  const [calendarExpanded, setCalendarExpanded] = useState(true);
+  // Simple mode starts on the one-week strip instead of the full month grid.
+  const [calendarExpanded, setCalendarExpanded] = useState(!theme.simple);
+  useEffect(() => setCalendarExpanded(!theme.simple), [theme.simple]);
   const rangeStart = useMemo(() => startOfLocalDay(day), [day]);
   const rangeEnd = useMemo(() => endOfLocalDay(day), [day]);
   const today = isToday(day);
@@ -68,17 +76,20 @@ export default function CalendarScreen() {
   // A failed lookup counts as "nothing logged" so an unreachable new table can never hide the brand-new-account screen.
   const noLogsYet = (anyFood.isError || anyFood.data === false) && (anyExercise.isError || anyExercise.data === false);
   const logsLoading = foodLoading || exerciseLoading;
+  // Answers still waiting to sync show as already answered, so tapping "Taken" feels instant with or without signal.
+  const pendingDoses = usePendingDoses();
   const events = useMemo<CalendarEvent[] | undefined>(
-    () => (calendarEvents ? mergeTimeline(calendarEvents, foodEntries, exerciseEntries) : undefined),
-    [calendarEvents, foodEntries, exerciseEntries]
+    () => (calendarEvents ? applyPendingDoses(mergeTimeline(calendarEvents, foodEntries, exerciseEntries), pendingDoses) : undefined),
+    [calendarEvents, foodEntries, exerciseEntries, pendingDoses]
   );
   const { data: overview } = useMonthOverview(profile?.id, month);
   const { data: allMedications, isLoading: medsLoading } = useAllMedications(profile?.id);
   const { data: allVisits, isLoading: visitsLoading } = useAppointments(profile?.id);
-  const logDose = useLogDose();
   // Guardians are optional extras: if they fail to load, the missed-dose row simply has no "Tell" button.
   const { data: guardians } = useGuardians(profile?.id);
   const toTell = useMemo(() => alertGuardians(guardians), [guardians]);
+  // FlatList redraws rows only when its data changes; these arrive later (or change), so they must be declared as row inputs.
+  const rowInputs = useMemo(() => ({ toTell, isViewingSelf, patient: profile?.displayName }), [toTell, isViewingSelf, profile?.displayName]);
 
   // "Loading" here is only the first load. Switching days keeps the calendar on screen and just skeletons the timeline.
   const noMedsOrVisits = (allMedications?.length ?? 0) === 0 && (allVisits?.length ?? 0) === 0;
@@ -135,12 +146,9 @@ export default function CalendarScreen() {
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     }
-    // The dose is handled, so its reminder must not fire (ids match planReminders).
-    cancelReminder(`dose:${medicationId}:${new Date(scheduledAt).getTime()}`);
-    logDose.mutate(
-      { medicationId, scheduledAt, status },
-      { onError: (err) => Alert.alert("Couldn't update", friendlyError(err)) }
-    );
+    // Queue first (the row updates at once), then silence this dose's reminder and follow-ups. Saved now, or as soon as there's signal.
+    submitDose({ medicationId, scheduledAt, status }).catch((err) => Alert.alert("Couldn't update", friendlyError(err)));
+    cancelDoseReminders(medicationId, scheduledAt);
   }
 
   const daySummary = [
@@ -151,8 +159,19 @@ export default function CalendarScreen() {
     .filter(Boolean)
     .join(" · ");
 
+  const lowSupplies = useMemo<LowSupply[]>(
+    () =>
+      (allMedications ?? []).flatMap((medication) => {
+        const status = refillStatus(medication);
+        return status?.low ? [{ medication, status }] : [];
+      }),
+    [allMedications]
+  );
+
   const listHeader = (
     <View>
+      <SyncBanner pending={pendingDoses} />
+      <RefillBanner low={lowSupplies} onOpen={(id) => router.push(`/medication/${id}`)} onOpenList={() => router.push("/(tabs)/medications")} />
       <MonthCalendar
         selected={day}
         onSelect={selectDay}
@@ -170,8 +189,12 @@ export default function CalendarScreen() {
             {dayLoading ? "Loading…" : daySummary || "Nothing scheduled"}
           </AppText>
         </View>
+        {!theme.simple && (
+          <>
         <QuickLogButton icon="restaurant-outline" label="Add food" tint={theme.colors.nutrition} onPress={() => router.push(`/food/new?date=${toLocalDateString(day)}`)} />
         <QuickLogButton icon="walk-outline" label="Add exercise" tint={theme.colors.exercise} onPress={() => router.push(`/exercise/new?date=${toLocalDateString(day)}`)} />
+          </>
+        )}
       </View>
     </View>
   );
@@ -226,6 +249,7 @@ export default function CalendarScreen() {
         <FlatList
           data={dayLoading ? [] : rows}
           keyExtractor={(r) => r.key}
+          extraData={rowInputs}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
             dayLoading || logsLoading ? (

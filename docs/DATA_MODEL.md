@@ -32,6 +32,8 @@ One row per person tracked in the app — the account holder or a dependent they
 | `archived_at` | timestamptz, nullable | |
 | `created_at` | timestamptz | |
 
+> `medications.quantity_on_hand` is decremented by a trigger on `dose_logs` when a dose becomes `taken` (migration `0005`); `refill_threshold` defaults to ~3 days of doses when supply is entered.
+
 ### `dose_logs`
 One row per scheduled dose occurrence — the adherence record.
 

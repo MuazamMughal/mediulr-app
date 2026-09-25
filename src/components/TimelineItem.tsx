@@ -25,6 +25,7 @@ function formatTime(iso: string): string {
 
 export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, onTellGuardian, onPress }: TimelineItemProps) {
   const theme = useTheme();
+  const avatarSize = theme.simple ? styles.avatarSimple : null;
 
   if (event.kind === "medication") {
     const { medication, dose } = event;
@@ -35,7 +36,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
 
     return (
       <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-        <View style={[styles.avatar, { backgroundColor: done ? theme.colors.surfaceSunken : theme.colors.medicationSoft }]}>
+        <View style={[styles.avatar, avatarSize, { backgroundColor: done ? theme.colors.surfaceSunken : theme.colors.medicationSoft }]}>
           <Ionicons name="medkit" size={17} color={done ? theme.colors.textTertiary : theme.colors.medication} />
         </View>
         <Animated.View style={styles.body} layout={LinearTransition.springify().damping(18).stiffness(180)}>
@@ -99,7 +100,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
   if (event.kind === "appointment") {
     return (
       <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-        <View style={[styles.avatar, { backgroundColor: theme.colors.visitSoft }]}>
+        <View style={[styles.avatar, avatarSize, { backgroundColor: theme.colors.visitSoft }]}>
           <Ionicons name="medical" size={17} color={theme.colors.visit} />
         </View>
         <View style={styles.body}>
@@ -126,7 +127,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
           accessibilityLabel={`${mealLabel(food.mealType)}, ${food.name}${food.quantity ? `, ${food.quantity}` : ""}, ${time}`}
           style={({ pressed }) => [styles.row, pressed && styles.pressed]}
         >
-          <View style={[styles.avatar, { backgroundColor: theme.colors.nutritionSoft }]}>
+          <View style={[styles.avatar, avatarSize, { backgroundColor: theme.colors.nutritionSoft }]}>
             <Ionicons name={mealIcon(food.mealType)} size={18} color={theme.colors.nutrition} />
           </View>
           <View style={styles.body}>
@@ -162,7 +163,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
           accessibilityLabel={`${exerciseTitle(exercise)}, ${formatDuration(exercise.durationMinutes)}, ${time}`}
           style={({ pressed }) => [styles.row, pressed && styles.pressed]}
         >
-          <View style={[styles.avatar, { backgroundColor: theme.colors.exerciseSoft }]}>
+          <View style={[styles.avatar, avatarSize, { backgroundColor: theme.colors.exerciseSoft }]}>
             <Ionicons name={exerciseIcon(exercise.exerciseType)} size={18} color={theme.colors.exercise} />
           </View>
           <View style={styles.body}>
@@ -203,6 +204,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", paddingVertical: 12, paddingHorizontal: 20, gap: 12 },
   pressed: { opacity: 0.7 },
   time: { width: 60, paddingTop: 3 },
+  avatarSimple: { width: 52, height: 52, borderRadius: 16 },
   avatar: { width: 40, height: 40, borderRadius: 13, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
   body: { flex: 1, justifyContent: "center" },
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },

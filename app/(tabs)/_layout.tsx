@@ -1,11 +1,15 @@
 import { Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { TabIcon } from "../../src/components/TabIcon";
 import { useReminderSync } from "../../src/features/notifications/useReminderSync";
+import { useDoseSync } from "../../src/features/offline/useDoseSync";
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   useReminderSync();
+  useDoseSync();
 
   return (
     <Tabs
@@ -13,14 +17,16 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textTertiary,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        // Five tabs share the width, so the standard size is a touch smaller; simple mode has only four and can afford more.
+        tabBarLabelStyle: { fontSize: theme.simple ? 13 : 10.5, fontWeight: "600" },
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
           borderTopWidth: 1,
-          height: 64,
-          paddingTop: 10,
-          paddingBottom: 10,
+          // Room for icon + dot + label (they were clipped in a fixed 64), plus the phone's own bottom inset.
+          height: (theme.simple ? 88 : 68) + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: 8 + insets.bottom,
         },
       }}
     >
@@ -46,6 +52,7 @@ export default function TabsLayout() {
         name="appointments"
         options={{
           title: "Doctor Visits",
+          tabBarLabel: "Visits",
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="person-outline" activeName="person" color={color} size={size} focused={focused} />
           ),
@@ -55,6 +62,8 @@ export default function TabsLayout() {
         name="lifestyle"
         options={{
           title: "Lifestyle",
+          // Simple mode keeps the app to the essentials: today, medications, visits, profile.
+          href: theme.simple ? null : undefined,
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="leaf-outline" activeName="leaf" color={color} size={size} focused={focused} />
           ),

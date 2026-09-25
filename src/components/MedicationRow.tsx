@@ -4,13 +4,13 @@ import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { describeRecurrence } from "../features/medications/describeRecurrence";
 import { describeCourse } from "../features/medications/describeCourse";
+import { refillStatus } from "../features/medications/refill";
 import type { Medication } from "../types/domain";
 
 export function MedicationRow({ medication, onPress }: { medication: Medication; onPress: () => void }) {
   const theme = useTheme();
-  const lowStock = medication.quantityOnHand != null && medication.refillThreshold != null
-    ? medication.quantityOnHand <= medication.refillThreshold
-    : false;
+  const supply = refillStatus(medication);
+  const lowStock = !!supply?.low;
 
   const course = describeCourse(medication);
   const showCourse = course.status !== "Ongoing";
@@ -40,6 +40,7 @@ export function MedicationRow({ medication, onPress }: { medication: Medication;
       {medication.quantityOnHand != null && (
         <View style={styles.meta}>
           <AppText variant="caption" color={lowStock ? "warning" : "tertiary"} weight={lowStock ? "semibold" : "regular"}>
+            {lowStock ? "Refill soon · " : ""}
             {medication.quantityOnHand} left
           </AppText>
         </View>

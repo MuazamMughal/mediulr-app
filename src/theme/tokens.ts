@@ -45,6 +45,18 @@ export const typography = {
   metadata: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const, letterSpacing: 0.2 },
 } as const;
 
+/** Simple mode: every text style scaled up, keeping the same proportions. */
+export const SIMPLE_MODE_TEXT_SCALE = 1.25;
+
+export function scaleTypography(scale: number): typeof typography {
+  if (scale === 1) return typography;
+  const scaled = {} as Record<string, unknown>;
+  for (const [name, style] of Object.entries(typography)) {
+    scaled[name] = { ...style, fontSize: Math.round(style.fontSize * scale), lineHeight: Math.round(style.lineHeight * scale) };
+  }
+  return scaled as typeof typography;
+}
+
 export type TypographyVariant = keyof typeof typography;
 
 export const motion = {

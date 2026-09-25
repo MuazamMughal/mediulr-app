@@ -59,6 +59,27 @@ export async function addAppointment(input: NewAppointmentInput): Promise<Appoin
   return fromRow(data);
 }
 
+export type AppointmentEdit = Omit<NewAppointmentInput, "profileId">;
+
+export async function updateAppointment(id: string, edit: AppointmentEdit): Promise<void> {
+  const { error } = await supabase
+    .from("appointments")
+    .update({
+      provider_name: edit.providerName,
+      specialty: edit.specialty ?? null,
+      location: edit.location ?? null,
+      scheduled_at: edit.scheduledAt,
+      pre_visit_notes: edit.preVisitNotes ?? null,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteAppointment(id: string): Promise<void> {
+  const { error } = await supabase.from("appointments").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function updatePostVisitNotes(id: string, notes: string | null): Promise<void> {
   const { error } = await supabase.from("appointments").update({ post_visit_notes: notes }).eq("id", id);
   if (error) throw error;

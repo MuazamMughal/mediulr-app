@@ -6,9 +6,10 @@ import { AppText } from "../../src/components/AppText";
 import { AppButton } from "../../src/components/AppButton";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
-import { useAllMedications, useArchiveMedication } from "../../src/features/medications/useMedications";
+import { useAllMedications, useArchiveMedication, useDeleteMedication } from "../../src/features/medications/useMedications";
 import { describeRecurrence, describeRecurrenceTimes } from "../../src/features/medications/describeRecurrence";
 import { describeCourse } from "../../src/features/medications/describeCourse";
+import { refillHeadline, refillStatus } from "../../src/features/medications/refill";
 
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
@@ -30,6 +31,7 @@ export default function MedicationDetailScreen() {
   const { profile } = useActiveProfile();
   const { data: medications, isLoading } = useAllMedications(profile?.id);
   const archiveMedication = useArchiveMedication(profile?.id);
+  const deleteMedication = useDeleteMedication();
 
   const medication = medications?.find((m) => m.id === id);
 
@@ -39,6 +41,7 @@ export default function MedicationDetailScreen() {
 
   const times = describeRecurrenceTimes(medication.recurrenceRule);
   const course = describeCourse(medication);
+  const refill = refillStatus(medication);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={styles.content}>
@@ -63,9 +66,18 @@ export default function MedicationDetailScreen() {
         <InfoLine label="TREATMENT" value={course.range ?? "Ongoing — no end date"} />
         <InfoLine label="INSTRUCTIONS" value={medication.instructions || "None noted"} />
         {medication.quantityOnHand != null && (
-          <InfoLine label="QUANTITY REMAINING" value={`${medication.quantityOnHand} doses`} />
+          <InfoLine
+            label="SUPPLY"
+            value={`${medication.quantityOnHand} left${refill?.low ? ` · ${refillHeadline(refill)} — time to refill` : ""}`}
+          />
         )}
       </View>
+
+      {course.active && (
+        <View style={styles.actions}>
+          <AppButton label="Edit medication" variant="secondary" onPress={() => router.push(`/medication/edit/${medication.id}`)} />
+        </View>
+      )}
 
       {course.active && (
       <View style={styles.destructive}>
@@ -92,6 +104,34 @@ export default function MedicationDetailScreen() {
         />
       </View>
       )}
+
+      <View style={styles.deleteRow}>
+        <AppButton
+          label="Delete medication and its history"
+          variant="ghost"
+          onPress={() =>
+            Alert.alert(
+              `Delete ${medication.name}?`,
+              "This permanently removes it and every dose you've logged for it. To keep your history, use Stop instead.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      await deleteMedication.mutateAsync(medication.id);
+                      router.back();
+                    } catch (err) {
+                      Alert.alert("Couldn't delete medication", friendlyError(err));
+                    }
+                  },
+                },
+              ]
+            )
+          }
+        />
+      </View>
     </ScrollView>
   );
 }
@@ -106,5 +146,7 @@ const styles = StyleSheet.create({
   infoLine: { gap: 4 },
   infoLabel: { letterSpacing: 0.5 },
   infoValue: { lineHeight: 22 },
-  destructive: { marginTop: 44 },
+  actions: { marginTop: 32 },
+  destructive: { marginTop: 12 },
+  deleteRow: { marginTop: 8 },
 });
