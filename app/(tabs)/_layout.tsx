@@ -52,6 +52,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="lifestyle"
+        options={{
+          title: "Lifestyle",
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon name="leaf-outline" activeName="leaf" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",

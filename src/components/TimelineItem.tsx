@@ -4,6 +4,9 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanim
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { DoseCheckButton } from "./DoseCheckButton";
+import { mealIcon, mealLabel } from "../features/nutrition/constants";
+import { exerciseIcon, intensityLabel } from "../features/exercise/constants";
+import { exerciseTitle, formatDuration } from "../features/exercise/logic";
 import type { CalendarEvent } from "../types/domain";
 
 interface TimelineItemProps {
@@ -91,6 +94,77 @@ export function TimelineItem({ event, onMarkTaken, onSkip, onPress }: TimelineIt
           </AppText>
         </View>
       </Pressable>
+    );
+  }
+
+  if (event.kind === "food") {
+    const { food } = event;
+    const time = formatTime(event.at);
+    return (
+      <Animated.View entering={FadeIn.duration(220)}>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`${mealLabel(food.mealType)}, ${food.name}${food.quantity ? `, ${food.quantity}` : ""}, ${time}`}
+          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        >
+          <View style={[styles.avatar, { backgroundColor: theme.colors.nutritionSoft }]}>
+            <Ionicons name={mealIcon(food.mealType)} size={18} color={theme.colors.nutrition} />
+          </View>
+          <View style={styles.body}>
+            <View style={styles.nameRow}>
+              <AppText variant="bodyMedium" weight="semibold" style={{ flexShrink: 1 }}>
+                {food.name}
+              </AppText>
+              {food.quantity && (
+                <View style={[styles.dosagePill, { backgroundColor: theme.colors.surfaceSunken }]}>
+                  <AppText variant="metadata" color="secondary" weight="semibold">
+                    {food.quantity}
+                  </AppText>
+                </View>
+              )}
+            </View>
+            <AppText variant="caption" color="tertiary" style={styles.subtitle}>
+              {mealLabel(food.mealType)} · {time}
+            </AppText>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  }
+
+  if (event.kind === "exercise") {
+    const { exercise } = event;
+    const time = formatTime(event.at);
+    return (
+      <Animated.View entering={FadeIn.duration(220)}>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`${exerciseTitle(exercise)}, ${formatDuration(exercise.durationMinutes)}, ${time}`}
+          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        >
+          <View style={[styles.avatar, { backgroundColor: theme.colors.exerciseSoft }]}>
+            <Ionicons name={exerciseIcon(exercise.exerciseType)} size={18} color={theme.colors.exercise} />
+          </View>
+          <View style={styles.body}>
+            <View style={styles.nameRow}>
+              <AppText variant="bodyMedium" weight="semibold" style={{ flexShrink: 1 }}>
+                {exerciseTitle(exercise)}
+              </AppText>
+              <View style={[styles.dosagePill, { backgroundColor: theme.colors.surfaceSunken }]}>
+                <AppText variant="metadata" color="secondary" weight="semibold">
+                  {formatDuration(exercise.durationMinutes)}
+                </AppText>
+              </View>
+            </View>
+            <AppText variant="caption" color="tertiary" style={styles.subtitle}>
+              {time}
+              {exercise.intensity ? ` · ${intensityLabel(exercise.intensity)}` : ""}
+            </AppText>
+          </View>
+        </Pressable>
+      </Animated.View>
     );
   }
 

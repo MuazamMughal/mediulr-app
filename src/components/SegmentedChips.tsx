@@ -19,6 +19,8 @@ export function SegmentedChips({ options, selectedIndex, onSelect }: SegmentedCh
           <Pressable
             key={label}
             onPress={() => onSelect(i)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             style={({ pressed }) => [
               styles.chip,
               {

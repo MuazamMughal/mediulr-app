@@ -41,6 +41,13 @@ const light = {
   medicationSoft: "#FCE6D4",
   visit: "#8A6A3B",
   visitSoft: "#F3EBDC",
+
+  // Nutrition and exercise identity. No new hues: nutrition borrows the palette's green, exercise its warm ink.
+  // They are told apart from medication/visits mainly by icon and label, and kept quieter than either.
+  nutrition: "#3C8A5C",
+  nutritionSoft: "#E3F1E7",
+  exercise: "#6B655D",
+  exerciseSoft: "#EEEAE3",
 } as const;
 
 const dark = {
@@ -73,6 +80,11 @@ const dark = {
   medicationSoft: "#3D2A1C",
   visit: "#D3B378",
   visitSoft: "#3A2F1D",
+
+  nutrition: "#6FBB8B",
+  nutritionSoft: "#1E3226",
+  exercise: "#B4AEA3",
+  exerciseSoft: "#2E2B27",
 } as const;
 
 export type Colors = { [K in keyof typeof light]: string };

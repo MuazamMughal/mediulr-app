@@ -8,6 +8,7 @@ import { useTheme } from "../theme/ThemeProvider";
 import { addDays } from "../lib/dates";
 import { AppText } from "./AppText";
 import type { DayOverview } from "../features/calendar/overview";
+import type { DayLogs } from "../features/lifestyle/logic";
 
 interface MonthCalendarProps {
   /** The day whose timeline is shown below. */
@@ -19,15 +20,19 @@ interface MonthCalendarProps {
   expanded: boolean;
   onToggleExpanded: () => void;
   overview: Record<string, DayOverview> | undefined;
+  /** Meals and activity per day; shown as hollow markers so they read as quieter than doses and visits. */
+  logs?: Record<string, DayLogs>;
 }
 
 const DAY_HEIGHT = 50;
 
-function describeDay(meta: CalendarDayMetadata, o: DayOverview | undefined): string {
+function describeDay(meta: CalendarDayMetadata, o: DayOverview | undefined, l?: DayLogs): string {
   const parts = [meta.date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })];
   if (o?.doses) parts.push(`${o.doses} ${o.doses === 1 ? "dose" : "doses"}, ${o.taken + o.skipped} done`);
   if (o?.visits) parts.push(`${o.visits} doctor ${o.visits === 1 ? "visit" : "visits"}`);
-  if (o && !o.doses && !o.visits) parts.push("nothing scheduled");
+  if (l?.meals) parts.push(`${l.meals} ${l.meals === 1 ? "meal" : "meals"} logged`);
+  if (l?.activities) parts.push(`${l.activities} ${l.activities === 1 ? "activity" : "activities"} logged`);
+  if (o && !o.doses && !o.visits && !l?.meals && !l?.activities) parts.push("nothing scheduled");
   return parts.join(", ");
 }
 
@@ -36,8 +41,9 @@ function describeDay(meta: CalendarDayMetadata, o: DayOverview | undefined): str
  * month grid); each day is drawn here so it can carry dots for what's scheduled:
  *  - accent dot: medication doses (green once all are taken/skipped, amber if any were missed)
  *  - gold dot:   a doctor visit
+ *  - hollow green / grey ring: meals / exercise logged
  */
-export function MonthCalendar({ selected, onSelect, month, onMonthChange, expanded, onToggleExpanded, overview }: MonthCalendarProps) {
+export function MonthCalendar({ selected, onSelect, month, onMonthChange, expanded, onToggleExpanded, overview, logs }: MonthCalendarProps) {
   const theme = useTheme();
   const selectedId = toDateId(selected);
 
@@ -117,6 +123,7 @@ export function MonthCalendar({ selected, onSelect, month, onMonthChange, expand
               key={meta.id}
               meta={meta}
               overview={overview?.[meta.id]}
+              logs={logs?.[meta.id]}
               isSelected={meta.id === selectedId}
               onPress={() => {
                 Haptics.selectionAsync().catch(() => undefined);
@@ -134,6 +141,8 @@ export function MonthCalendar({ selected, onSelect, month, onMonthChange, expand
           <LegendDot color={theme.colors.success} label="All done" />
           <LegendDot color={theme.colors.warning} label="Missed" />
           <LegendDot color={theme.colors.visit} label="Doctor visit" />
+          <LegendDot color={theme.colors.nutrition} label="Food" hollow />
+          <LegendDot color={theme.colors.exercise} label="Exercise" hollow />
         </View>
       )}
     </Animated.View>
@@ -158,11 +167,13 @@ function NavButton({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyph
 const DayCell = memo(function DayCell({
   meta,
   overview,
+  logs,
   isSelected,
   onPress,
 }: {
   meta: CalendarDayMetadata;
   overview: DayOverview | undefined;
+  logs: DayLogs | undefined;
   isSelected: boolean;
   onPress: () => void;
 }) {
@@ -184,7 +195,7 @@ const DayCell = memo(function DayCell({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={describeDay(meta, overview)}
+      accessibilityLabel={describeDay(meta, overview, logs)}
       accessibilityState={{ selected: isSelected }}
       style={styles.cell}
     >
@@ -207,15 +218,17 @@ const DayCell = memo(function DayCell({
       <View style={styles.dots}>
         {doses > 0 && <View style={[styles.dot, { backgroundColor: doseColor }]} />}
         {visits > 0 && <View style={[styles.dot, { backgroundColor: theme.colors.visit }]} />}
+        {(logs?.meals ?? 0) > 0 && <View style={[styles.dot, styles.ring, { borderColor: theme.colors.nutrition }]} />}
+        {(logs?.activities ?? 0) > 0 && <View style={[styles.dot, styles.ring, { borderColor: theme.colors.exercise }]} />}
       </View>
     </Pressable>
   );
 });
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function LegendDot({ color, label, hollow }: { color: string; label: string; hollow?: boolean }) {
   return (
     <View style={styles.legendItem}>
-      <View style={[styles.dot, { backgroundColor: color }]} />
+      <View style={[styles.dot, hollow ? [styles.ring, { borderColor: color }] : { backgroundColor: color }]} />
       <AppText variant="metadata" color="tertiary">
         {label}
       </AppText>
@@ -241,9 +254,12 @@ const styles = StyleSheet.create({
   dayCircle: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
   dots: { flexDirection: "row", gap: 3, height: 6, marginTop: 1, alignItems: "center" },
   dot: { width: 5, height: 5, borderRadius: 2.5 },
+  ring: { borderWidth: 1.25, backgroundColor: "transparent" },
   legend: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    flexWrap: "wrap",
+    columnGap: 14,
+    rowGap: 6,
     paddingHorizontal: 10,
     paddingVertical: 10,
     marginTop: 4,

@@ -1,5 +1,5 @@
 /**
- * Hand-written stand-in matching supabase/migrations/0001_init.sql.
+ * Hand-written stand-in matching supabase/migrations/0001_init.sql (+ 0003_nutrition_exercise.sql).
  * Once a real Supabase project exists, regenerate with:
  *   npx supabase gen types typescript --project-id <id> > src/types/database.ts
  */
@@ -101,6 +101,70 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["appointments"]["Insert"]>;
+        Relationships: [];
+      };
+      food_entries: {
+        Row: {
+          id: string;
+          profile_id: string;
+          name: string;
+          meal_type: "breakfast" | "lunch" | "dinner" | "snack" | "other";
+          eaten_at: string;
+          quantity: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          name: string;
+          meal_type: "breakfast" | "lunch" | "dinner" | "snack" | "other";
+          eaten_at: string;
+          quantity?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["food_entries"]["Insert"]>;
+        Relationships: [];
+      };
+      exercise_entries: {
+        Row: {
+          id: string;
+          profile_id: string;
+          exercise_type:
+            | "walking"
+            | "running"
+            | "cycling"
+            | "gym"
+            | "strength"
+            | "yoga"
+            | "stretching"
+            | "swimming"
+            | "sports"
+            | "other";
+          name: string | null;
+          started_at: string;
+          duration_minutes: number;
+          intensity: "light" | "moderate" | "vigorous" | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          exercise_type: Database["public"]["Tables"]["exercise_entries"]["Row"]["exercise_type"];
+          name?: string | null;
+          started_at: string;
+          duration_minutes: number;
+          intensity?: "light" | "moderate" | "vigorous" | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["exercise_entries"]["Insert"]>;
         Relationships: [];
       };
       reminders: {

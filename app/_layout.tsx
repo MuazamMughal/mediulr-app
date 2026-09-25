@@ -60,6 +60,22 @@ function Navigation() {
       />
       <Stack.Screen name="appointment/[id]" options={{ title: "Doctor visit" }} />
       <Stack.Screen
+        name="food/new"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
+      <Stack.Screen
+        name="food/[id]"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
+      <Stack.Screen
+        name="exercise/new"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
+      <Stack.Screen
+        name="exercise/[id]"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
+      <Stack.Screen
         name="paywall"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />

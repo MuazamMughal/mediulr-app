@@ -13,14 +13,19 @@ import { TimelineItem } from "../../src/components/TimelineItem";
 import { ProgressRing } from "../../src/components/ProgressRing";
 import { HomeEmptyState } from "../../src/components/HomeEmptyState";
 import { MonthCalendar } from "../../src/components/MonthCalendar";
+import { PeriodHeader, periodOf, type Period } from "../../src/components/PeriodHeader";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useCalendarEvents } from "../../src/features/calendar/useCalendarEvents";
 import { useMonthOverview } from "../../src/features/calendar/useMonthOverview";
 import { useAllMedications, useLogDose } from "../../src/features/medications/useMedications";
 import { cancelReminder } from "../../src/features/notifications/scheduleNotifications";
-import { endOfLocalDay, startOfLocalDay } from "../../src/lib/dates";
+import { endOfLocalDay, startOfLocalDay, toLocalDateString } from "../../src/lib/dates";
 import { useAppointments } from "../../src/features/appointments/useAppointments";
+import { useFoodForRange, useHasAnyFood } from "../../src/features/nutrition/useFood";
+import { useExerciseForRange, useHasAnyExercise } from "../../src/features/exercise/useExercise";
+import { useMonthLogs } from "../../src/features/lifestyle/useMonthLogs";
+import { mergeTimeline, summarizeLogs } from "../../src/features/lifestyle/logic";
 import type { CalendarEvent } from "../../src/types/domain";
 
 function isToday(d: Date) {
@@ -32,21 +37,6 @@ function greeting(): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
-}
-
-type Period = "Morning" | "Afternoon" | "Evening" | "Night";
-const PERIOD_ICON: Record<Period, keyof typeof Ionicons.glyphMap> = {
-  Morning: "sunny-outline",
-  Afternoon: "partly-sunny-outline",
-  Evening: "cloudy-night-outline",
-  Night: "moon",
-};
-function periodOf(date: Date): Period {
-  const h = date.getHours();
-  if (h >= 5 && h < 12) return "Morning";
-  if (h >= 12 && h < 17) return "Afternoon";
-  if (h >= 17 && h < 21) return "Evening";
-  return "Night";
 }
 
 type Row =
@@ -65,15 +55,31 @@ export default function CalendarScreen() {
   const rangeEnd = useMemo(() => endOfLocalDay(day), [day]);
   const today = isToday(day);
 
-  const { data: events, isLoading: dayLoading } = useCalendarEvents(profile?.id, rangeStart, rangeEnd);
+  const { data: calendarEvents, isLoading: dayLoading } = useCalendarEvents(profile?.id, rangeStart, rangeEnd);
+  // Food and exercise load on their own, so a problem there can never hide medications or doctor visits.
+  const { data: foodEntries, isLoading: foodLoading } = useFoodForRange(profile?.id, rangeStart, rangeEnd);
+  const { data: exerciseEntries, isLoading: exerciseLoading } = useExerciseForRange(profile?.id, rangeStart, rangeEnd);
+  const monthLogs = useMonthLogs(profile?.id, month);
+  const anyFood = useHasAnyFood(profile?.id);
+  const anyExercise = useHasAnyExercise(profile?.id);
+  // A failed lookup counts as "nothing logged" so an unreachable new table can never hide the brand-new-account screen.
+  const noLogsYet = (anyFood.isError || anyFood.data === false) && (anyExercise.isError || anyExercise.data === false);
+  const logsLoading = foodLoading || exerciseLoading;
+  const events = useMemo<CalendarEvent[] | undefined>(
+    () => (calendarEvents ? mergeTimeline(calendarEvents, foodEntries, exerciseEntries) : undefined),
+    [calendarEvents, foodEntries, exerciseEntries]
+  );
   const { data: overview } = useMonthOverview(profile?.id, month);
   const { data: allMedications, isLoading: medsLoading } = useAllMedications(profile?.id);
   const { data: allVisits, isLoading: visitsLoading } = useAppointments(profile?.id);
   const logDose = useLogDose();
 
   // "Loading" here is only the first load. Switching days keeps the calendar on screen and just skeletons the timeline.
-  const isLoading = !profile || medsLoading || visitsLoading;
-  const hasNothingYet = !isLoading && (allMedications?.length ?? 0) === 0 && (allVisits?.length ?? 0) === 0;
+  const noMedsOrVisits = (allMedications?.length ?? 0) === 0 && (allVisits?.length ?? 0) === 0;
+  // Only wait on the meal/exercise lookups when they could change the answer, so the welcome screen never flashes the calendar first.
+  const isLoading = !profile || medsLoading || visitsLoading || (noMedsOrVisits && (anyFood.isLoading || anyExercise.isLoading));
+  // Brand new = no medications, no visits, and no meals or activity either.
+  const hasNothingYet = !isLoading && noMedsOrVisits && noLogsYet;
 
   const medicationEvents = events?.filter((e) => e.kind === "medication") ?? [];
   const visitCount = events?.filter((e) => e.kind === "appointment").length ?? 0;
@@ -134,6 +140,7 @@ export default function CalendarScreen() {
   const daySummary = [
     totalCount > 0 ? `${totalCount} ${totalCount === 1 ? "dose" : "doses"}` : null,
     visitCount > 0 ? `${visitCount} doctor ${visitCount === 1 ? "visit" : "visits"}` : null,
+    ...summarizeLogs(foodEntries ?? [], exerciseEntries ?? []),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -148,12 +155,17 @@ export default function CalendarScreen() {
         expanded={calendarExpanded}
         onToggleExpanded={() => setCalendarExpanded((e) => !e)}
         overview={overview}
+        logs={monthLogs}
       />
       <View style={styles.dayHeading}>
-        <AppText variant="h3">{day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</AppText>
-        <AppText variant="caption" color={dayLoading ? "tertiary" : "secondary"} style={{ marginTop: 2 }}>
-          {dayLoading ? "Loading…" : daySummary || "Nothing scheduled"}
-        </AppText>
+        <View style={{ flex: 1 }}>
+          <AppText variant="h3">{day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</AppText>
+          <AppText variant="caption" color={dayLoading ? "tertiary" : "secondary"} style={{ marginTop: 2 }}>
+            {dayLoading ? "Loading…" : daySummary || "Nothing scheduled"}
+          </AppText>
+        </View>
+        <QuickLogButton icon="restaurant-outline" label="Add food" tint={theme.colors.nutrition} onPress={() => router.push(`/food/new?date=${toLocalDateString(day)}`)} />
+        <QuickLogButton icon="walk-outline" label="Add exercise" tint={theme.colors.exercise} onPress={() => router.push(`/exercise/new?date=${toLocalDateString(day)}`)} />
       </View>
     </View>
   );
@@ -210,7 +222,7 @@ export default function CalendarScreen() {
           keyExtractor={(r) => r.key}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={
-            dayLoading ? (
+            dayLoading || logsLoading ? (
               <View>
                 <SkeletonRow />
                 <SkeletonRow />
@@ -225,7 +237,7 @@ export default function CalendarScreen() {
           }
           renderItem={({ item }) => {
             if (item.kind === "now") return <NowMarker />;
-            if (item.kind === "section") return <SectionHeader period={item.period} />;
+            if (item.kind === "section") return <PeriodHeader period={item.period} />;
             const event = item.event;
             return (
               <TimelineItem
@@ -237,7 +249,11 @@ export default function CalendarScreen() {
                     ? () => router.push(`/medication/${event.medication.id}`)
                     : event.kind === "appointment"
                       ? () => router.push(`/appointment/${event.appointment.id}`)
-                      : undefined
+                      : event.kind === "food"
+                        ? () => router.push(`/food/${event.food.id}`)
+                        : event.kind === "exercise"
+                          ? () => router.push(`/exercise/${event.exercise.id}`)
+                          : undefined
                 }
               />
             );
@@ -261,15 +277,18 @@ export default function CalendarScreen() {
   );
 }
 
-function SectionHeader({ period }: { period: Period }) {
+function QuickLogButton({ icon, label, tint, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; tint: string; onPress: () => void }) {
   const theme = useTheme();
   return (
-    <View style={styles.sectionHeader}>
-      <Ionicons name={PERIOD_ICON[period]} size={13} color={theme.colors.textTertiary} />
-      <AppText variant="metadata" color="tertiary" style={styles.sectionLabel}>
-        {period.toUpperCase()}
-      </AppText>
-    </View>
+    <Pressable
+      onPress={onPress}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.quickButton, { backgroundColor: theme.colors.surfaceSunken }, pressed && { opacity: 0.6 }]}
+    >
+      <Ionicons name={icon} size={18} color={tint} />
+    </Pressable>
   );
 }
 
@@ -288,10 +307,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 },
   dateTitle: { marginTop: 2 },
   viewingChip: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999, marginTop: 6 },
-  dayHeading: { paddingHorizontal: 20, paddingTop: 22, paddingBottom: 2 },
+  dayHeading: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 2 },
+  quickButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   listContent: { paddingBottom: 12 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
-  sectionLabel: { letterSpacing: 0.6 },
   fabRow: { flexDirection: "row", gap: 12, padding: 16, borderTopWidth: 1 },
   nowRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, height: 14, gap: 8 },
   nowDot: { width: 7, height: 7, borderRadius: 3.5 },

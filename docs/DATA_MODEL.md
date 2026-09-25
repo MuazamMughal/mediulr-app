@@ -58,6 +58,39 @@ Doctor-visit reminders — **patient-entered only, never synced to a provider sy
 | `post_visit_notes` | text, nullable | Filled in after the visit |
 | `created_at` | timestamptz | |
 
+### `food_entries`
+
+What a profile ate and when — a plain log (no calories, macros or health judgements). Added in `0003_nutrition_exercise.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `profile_id` | uuid | → `profiles.id`, cascade delete. Same ownership model as medications/appointments |
+| `name` | text | 1–120 chars |
+| `meal_type` | text | `breakfast` · `lunch` · `dinner` · `snack` · `other` |
+| `eaten_at` | timestamptz | One instant for date + time; the app queries by local-day range |
+| `quantity` | text | Optional free text ("1 bowl", "2 eggs") |
+| `notes` | text | Optional |
+| `created_at`, `updated_at` | timestamptz | `updated_at` maintained by a trigger |
+
+### `exercise_entries`
+
+What activity a profile did, when, and for how long. Added in `0003_nutrition_exercise.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `profile_id` | uuid | → `profiles.id`, cascade delete |
+| `exercise_type` | text | `walking` · `running` · `cycling` · `gym` · `strength` · `yoga` · `stretching` · `swimming` · `sports` · `other` |
+| `name` | text | Custom label; required when the type is `other` |
+| `started_at` | timestamptz | |
+| `duration_minutes` | integer | 1–1440 |
+| `intensity` | text | Optional: `light` · `moderate` · `vigorous` |
+| `notes` | text | Optional |
+| `created_at`, `updated_at` | timestamptz | |
+
+Both tables are RLS-scoped through `profiles.owner_id = auth.uid()`, so each family member's entries are separate and only their owner can read or change them. Deleting a profile or the account removes them (cascade), so `delete_my_account()` needed no change. Reminders for meals/exercise are deliberately not modeled yet — extend `reminders.source_type` and `notifications/plan.ts` when they're wanted.
+
 ### `reminders`
 Generic reminder config, one per medication or appointment (1:many — a dose can have multiple reminder offsets).
 

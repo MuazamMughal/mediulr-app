@@ -52,8 +52,50 @@ export interface Reminder {
   escalationEnabled: boolean;
 }
 
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "other";
+
+/** What the user ate and when. A log entry, not a nutrition record — no calories or health judgements. */
+export interface FoodEntry {
+  id: string;
+  profileId: string;
+  name: string;
+  mealType: MealType;
+  eatenAt: string;
+  quantity: string | null;
+  notes: string | null;
+}
+
+export type ExerciseType =
+  | "walking"
+  | "running"
+  | "cycling"
+  | "gym"
+  | "strength"
+  | "yoga"
+  | "stretching"
+  | "swimming"
+  | "sports"
+  | "other";
+
+export type Intensity = "light" | "moderate" | "vigorous";
+
+/** What activity the user did, when, and for how long. */
+export interface ExerciseEntry {
+  id: string;
+  profileId: string;
+  exerciseType: ExerciseType;
+  /** Custom label; always set when the type is "other". */
+  name: string | null;
+  startedAt: string;
+  durationMinutes: number;
+  intensity: Intensity | null;
+  notes: string | null;
+}
+
 /** A single item on the unified calendar — the Calendar Engine's core data shape. */
 export type CalendarEvent =
   | { kind: "medication"; at: string; medication: Medication; dose: DoseLog }
   | { kind: "appointment"; at: string; appointment: Appointment }
+  | { kind: "food"; at: string; food: FoodEntry }
+  | { kind: "exercise"; at: string; exercise: ExerciseEntry }
   | { kind: "custom"; at: string; title: string; notes: string | null };
