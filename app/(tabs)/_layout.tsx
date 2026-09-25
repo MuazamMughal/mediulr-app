@@ -1,9 +1,11 @@
 import { Tabs } from "expo-router";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { TabIcon } from "../../src/components/TabIcon";
+import { useReminderSync } from "../../src/features/notifications/useReminderSync";
 
 export default function TabsLayout() {
   const theme = useTheme();
+  useReminderSync();
 
   return (
     <Tabs

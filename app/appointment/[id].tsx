@@ -6,14 +6,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
 import { friendlyError } from "../../src/lib/friendlyError";
-import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
+import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useAppointments, useUpdatePostVisitNotes } from "../../src/features/appointments/useAppointments";
 
 export default function AppointmentDetailScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profile } = useActiveSelfProfile();
+  const { profile } = useActiveProfile();
   const { data: appointments } = useAppointments(profile?.id);
   const updateNotes = useUpdatePostVisitNotes(profile?.id);
 

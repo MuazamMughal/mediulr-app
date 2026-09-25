@@ -10,6 +10,7 @@ import { Avatar } from "../../src/components/Avatar";
 import { Divider } from "../../src/components/Divider";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useAddDependentProfile, useProfiles } from "../../src/features/profile/useProfiles";
+import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 
 function NavRow({
   icon,
@@ -42,12 +43,12 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { data: profiles } = useProfiles();
+  const { profile: activeProfile, setActiveProfileId } = useActiveProfile();
   const addDependent = useAddDependentProfile();
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
 
   const self = profiles?.find((p) => p.isSelf);
-  const dependents = profiles?.filter((p) => !p.isSelf) ?? [];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top"]}>
@@ -79,18 +80,37 @@ export default function ProfileScreen() {
               FAMILY & CARE
             </AppText>
             <AppCard padded={false} style={styles.familyCard}>
-              {dependents.map((dep, i) => (
-                <View key={dep.id}>
-                  {i > 0 && <Divider style={{ marginLeft: 68 }} />}
-                  <View style={styles.dependentRow}>
-                    <Avatar name={dep.displayName} size={40} />
-                    <AppText variant="bodyMedium" style={{ marginLeft: 12 }}>
-                      {dep.displayName}
-                    </AppText>
+              {(profiles ?? []).map((p, i) => {
+                const isActive = activeProfile?.id === p.id;
+                return (
+                  <View key={p.id}>
+                    {i > 0 && <Divider style={{ marginLeft: 68 }} />}
+                    <Pressable
+                      onPress={() => setActiveProfileId(p.isSelf ? null : p.id)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isActive }}
+                      accessibilityLabel={`${p.isSelf ? "You" : p.displayName}${isActive ? ", currently viewing" : ". Tap to view their medications"}`}
+                      style={({ pressed }) => [styles.dependentRow, pressed && { opacity: 0.7 }]}
+                    >
+                      <Avatar name={p.displayName} size={40} />
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <AppText variant="bodyMedium">{p.isSelf ? `${p.displayName} (You)` : p.displayName}</AppText>
+                        {isActive && (
+                          <AppText variant="caption" color="accent" weight="semibold">
+                            Viewing now
+                          </AppText>
+                        )}
+                      </View>
+                      {isActive ? (
+                        <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+                      ) : (
+                        <Ionicons name="ellipse-outline" size={22} color={theme.colors.borderStrong} />
+                      )}
+                    </Pressable>
                   </View>
-                </View>
-              ))}
-              {dependents.length > 0 && <Divider style={{ marginLeft: 68 }} />}
+                );
+              })}
+              {(profiles?.length ?? 0) > 0 && <Divider style={{ marginLeft: 68 }} />}
               {adding ? (
                 <View style={styles.addForm}>
                   <TextInput

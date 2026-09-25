@@ -5,11 +5,6 @@ export function useProfiles() {
   return useQuery({ queryKey: ["profiles"], queryFn: listProfiles });
 }
 
-export function useActiveSelfProfile() {
-  const { data, ...rest } = useProfiles();
-  return { profile: data?.find((p) => p.isSelf), ...rest };
-}
-
 export function useAddDependentProfile() {
   const queryClient = useQueryClient();
   return useMutation({

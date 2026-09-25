@@ -8,15 +8,16 @@ import { AppButton } from "../../src/components/AppButton";
 import { EmptyState } from "../../src/components/EmptyState";
 import { SkeletonRow } from "../../src/components/Skeleton";
 import { VisitCard } from "../../src/components/VisitCard";
-import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
+import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useAppointments } from "../../src/features/appointments/useAppointments";
 import type { Appointment } from "../../src/types/domain";
 
 export default function AppointmentsScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { profile } = useActiveSelfProfile();
-  const { data: appointments, isLoading } = useAppointments(profile?.id);
+  const { profile } = useActiveProfile();
+  const { data: appointments, isLoading: queryLoading } = useAppointments(profile?.id);
+  const isLoading = !profile || queryLoading;
 
   const sections = useMemo(() => {
     if (!appointments) return [];
@@ -45,10 +46,11 @@ export default function AppointmentsScreen() {
         </View>
       )}
 
+      {/* Empty: the illustration carries the single action, so no footer button below. */}
       {!isLoading && sections.length === 0 && (
         <EmptyState
           icon="calendar-outline"
-          title="No doctor visits yet"
+          title="No visits on the calendar"
           description="Add an upcoming visit and Mediulr will remind you the day before and an hour before."
           actionLabel="Add doctor visit"
           onAction={() => router.push("/appointment/new")}
@@ -72,9 +74,11 @@ export default function AppointmentsScreen() {
         />
       )}
 
-      <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
-        <AppButton label="+ Add doctor visit" variant="secondary" onPress={() => router.push("/appointment/new")} />
-      </View>
+      {!isLoading && sections.length > 0 && (
+        <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
+          <AppButton label="+ Add doctor visit" variant="secondary" onPress={() => router.push("/appointment/new")} />
+        </View>
+      )}
     </SafeAreaView>
   );
 }

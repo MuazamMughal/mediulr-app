@@ -1,10 +1,14 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { LogBox } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
+import { ActiveProfileProvider } from "../src/features/profile/ActiveProfile";
+import { cancelAllReminders } from "../src/features/notifications/scheduleNotifications";
+import { supabase } from "../src/lib/supabase";
 
 // Expo Go on SDK 53+ dropped notification support and logs a loud error about it on
 // every import — src/features/notifications already catches this and degrades gracefully,
@@ -12,6 +16,21 @@ import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
 LogBox.ignoreLogs(["expo-notifications: Android Push notifications"]);
 
 const queryClient = new QueryClient();
+
+/** When anyone signs out, drop every cached query and scheduled reminder so the next person never sees or hears the last one's data. */
+function AuthSideEffects() {
+  const client = useQueryClient();
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        client.clear();
+        cancelAllReminders();
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, [client]);
+  return null;
+}
 
 function Navigation() {
   const theme = useTheme();
@@ -55,8 +74,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
-            <Navigation />
-            <StatusBar style="auto" />
+            <ActiveProfileProvider>
+              <AuthSideEffects />
+              <Navigation />
+              <StatusBar style="auto" />
+            </ActiveProfileProvider>
           </QueryClientProvider>
         </ThemeProvider>
       </SafeAreaProvider>

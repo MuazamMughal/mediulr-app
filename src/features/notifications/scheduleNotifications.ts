@@ -69,3 +69,41 @@ export async function cancelReminder(id: string): Promise<void> {
   if (!Notifications) return;
   await Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined);
 }
+
+/**
+ * Makes the device's scheduled notifications exactly `items` — nothing stale left behind (stopped medications,
+ * finished courses, deleted visits). Silent no-op if notifications are unavailable or not permitted; it never
+ * prompts, so it's safe to call on every app open.
+ */
+async function doReplaceAllReminders(items: ScheduleReminderInput[]): Promise<void> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") return;
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    for (const { id, title, body, fireAt } of items) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: id,
+        content: { title, body, sound: Platform.OS === "ios" ? "default" : undefined },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
+      });
+    }
+  } catch (err) {
+    console.warn("Couldn't refresh reminders", err);
+  }
+}
+
+// Runs one replacement at a time so an overlapping sync can't cancel another's half-scheduled work.
+let replaceQueue: Promise<void> = Promise.resolve();
+export function replaceAllReminders(items: ScheduleReminderInput[]): Promise<void> {
+  replaceQueue = replaceQueue.then(() => doReplaceAllReminders(items));
+  return replaceQueue;
+}
+
+/** Used on sign-out / account deletion so one person's reminders never fire on the next person's session. */
+export async function cancelAllReminders(): Promise<void> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
+  await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+}

@@ -27,11 +27,19 @@ export default function LoginScreen() {
     if (!canSubmit) return;
     setLoading(true);
     try {
-      const { error } =
-        mode === "signIn"
-          ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-          : await supabase.auth.signUp({ email: email.trim(), password });
-      if (error) throw error;
+      if (mode === "signIn") {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
+        if (error) throw error;
+        // With email confirmation switched on in Supabase there's no session yet — don't walk into an app that can't load anything.
+        if (!data.session) {
+          Alert.alert("Check your email", "We sent you a confirmation link. Confirm your email, then sign in.");
+          setMode("signIn");
+          return;
+        }
+      }
       router.replace(mode === "signUp" ? "/onboarding" : "/(tabs)");
     } catch (err) {
       Alert.alert("Couldn't sign in", friendlyError(err));

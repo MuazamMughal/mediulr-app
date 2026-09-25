@@ -5,9 +5,10 @@ import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
 import { AppButton } from "../../src/components/AppButton";
 import { friendlyError } from "../../src/lib/friendlyError";
-import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
-import { useArchiveMedication, useMedications } from "../../src/features/medications/useMedications";
+import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
+import { useAllMedications, useArchiveMedication } from "../../src/features/medications/useMedications";
 import { describeRecurrence, describeRecurrenceTimes } from "../../src/features/medications/describeRecurrence";
+import { describeCourse } from "../../src/features/medications/describeCourse";
 
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
@@ -26,8 +27,8 @@ export default function MedicationDetailScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { profile } = useActiveSelfProfile();
-  const { data: medications, isLoading } = useMedications(profile?.id);
+  const { profile } = useActiveProfile();
+  const { data: medications, isLoading } = useAllMedications(profile?.id);
   const archiveMedication = useArchiveMedication(profile?.id);
 
   const medication = medications?.find((m) => m.id === id);
@@ -37,6 +38,7 @@ export default function MedicationDetailScreen() {
   }
 
   const times = describeRecurrenceTimes(medication.recurrenceRule);
+  const course = describeCourse(medication);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={styles.content}>
@@ -49,22 +51,29 @@ export default function MedicationDetailScreen() {
       <AppText variant="body" color="secondary">
         {medication.dosage}
       </AppText>
+      <View style={[styles.statusPill, { backgroundColor: course.active ? theme.colors.accentSoft : theme.colors.surfaceSunken }]}>
+        <AppText variant="metadata" color={course.active ? "accent" : "secondary"} weight="semibold">
+          {course.status}
+        </AppText>
+      </View>
 
       <View style={styles.info}>
         <InfoLine label="FREQUENCY" value={describeRecurrence(medication.recurrenceRule)} />
         {times && <InfoLine label="REMINDER TIMES" value={times} />}
+        <InfoLine label="TREATMENT" value={course.range ?? "Ongoing — no end date"} />
         <InfoLine label="INSTRUCTIONS" value={medication.instructions || "None noted"} />
         {medication.quantityOnHand != null && (
           <InfoLine label="QUANTITY REMAINING" value={`${medication.quantityOnHand} doses`} />
         )}
       </View>
 
+      {course.active && (
       <View style={styles.destructive}>
         <AppButton
           label="Stop this medication"
           variant="destructive"
           onPress={() =>
-            Alert.alert("Stop this medication?", "This stops future reminders. It won't delete past history.", [
+            Alert.alert("Stop this medication?", "This stops future reminders. Past days stay in your calendar.", [
               { text: "Cancel", style: "cancel" },
               {
                 text: "Stop",
@@ -72,7 +81,7 @@ export default function MedicationDetailScreen() {
                 onPress: async () => {
                   try {
                     await archiveMedication.mutateAsync(medication.id);
-                    router.back();
+                    router.dismiss();
                   } catch (err) {
                     Alert.alert("Couldn't stop medication", friendlyError(err));
                   }
@@ -82,6 +91,7 @@ export default function MedicationDetailScreen() {
           }
         />
       </View>
+      )}
     </ScrollView>
   );
 }
@@ -91,6 +101,7 @@ const styles = StyleSheet.create({
   content: { padding: 24 },
   hero: { width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: 18 },
   name: { marginBottom: 3 },
+  statusPill: { alignSelf: "flex-start", marginTop: 12, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999 },
   info: { marginTop: 36, gap: 22 },
   infoLine: { gap: 4 },
   infoLabel: { letterSpacing: 0.5 },

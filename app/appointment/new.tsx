@@ -10,15 +10,15 @@ import { AppInput } from "../../src/components/AppInput";
 import { AppButton } from "../../src/components/AppButton";
 import { SheetHeader } from "../../src/components/SheetHeader";
 import { friendlyError } from "../../src/lib/friendlyError";
-import { useActiveSelfProfile } from "../../src/features/profile/useProfiles";
+import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useAddAppointment } from "../../src/features/appointments/useAppointments";
-import { requestNotificationPermission, scheduleReminder } from "../../src/features/notifications/scheduleNotifications";
+import { requestNotificationPermission } from "../../src/features/notifications/scheduleNotifications";
 
 export default function NewAppointmentScreen() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { profile } = useActiveSelfProfile();
+  const { profile } = useActiveProfile();
   const addAppointment = useAddAppointment();
 
   const [providerName, setProviderName] = useState("");
@@ -33,7 +33,10 @@ export default function NewAppointmentScreen() {
   async function handleSave() {
     if (!profile) return;
     try {
-      const appointment = await addAppointment.mutateAsync({
+      // Ask before saving: the reminder sync runs the instant the visit lands, so permission must already be settled.
+      await requestNotificationPermission();
+
+      await addAppointment.mutateAsync({
         profileId: profile.id,
         providerName: providerName.trim(),
         specialty: specialty.trim() || undefined,
@@ -42,21 +45,7 @@ export default function NewAppointmentScreen() {
         preVisitNotes: preVisitNotes.trim() || undefined,
       });
 
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        const dayBefore = new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000);
-        const hourBefore = new Date(scheduledAt.getTime() - 60 * 60 * 1000);
-        for (const fireAt of [dayBefore, hourBefore]) {
-          await scheduleReminder({
-            id: `${appointment.id}:${fireAt.toISOString()}`,
-            title: `Upcoming visit: ${appointment.providerName}`,
-            body: appointment.specialty ?? "Doctor visit reminder",
-            fireAt,
-          });
-        }
-      }
-
-      router.back();
+      router.dismiss();
     } catch (err) {
       Alert.alert("Couldn't save doctor visit", friendlyError(err));
     }
@@ -67,14 +56,14 @@ export default function NewAppointmentScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <SheetHeader title="Add doctor visit" onClose={() => router.back()} />
+      <SheetHeader title="Add doctor visit" onClose={() => router.dismiss()} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
       >
         <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
-          We'll remind you the day before and an hour before.
+          {profile && !profile.isSelf ? `Adding for ${profile.displayName}. ` : ""}We'll remind you the day before and an hour before.
         </AppText>
 
         <View style={styles.field}>

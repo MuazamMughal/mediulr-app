@@ -35,6 +35,10 @@ npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 ```
 
+### Second migration (account deletion)
+
+Also run `supabase/migrations/0002_delete_account.sql` the same way. It adds the `delete_my_account()` function that the Settings screen's "Delete account & data" uses. Until it's applied, that button reports that deletion isn't set up.
+
 ## 4. Turn off email confirmation (for local testing)
 
 By default Supabase requires clicking an email confirmation link before sign-in works. During local development there's nowhere for that link to redirect to, so sign-in fails with "email not confirmed."

@@ -20,6 +20,7 @@ export interface Medication {
   startDate: string;
   endDate: string | null;
   archivedAt: string | null;
+  createdAt: string;
 }
 
 export type DoseStatus = "pending" | "taken" | "skipped" | "snoozed";

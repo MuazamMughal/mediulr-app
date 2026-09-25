@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase";
-import { occurrencesInRange } from "../../lib/recurrence";
 import { listAppointments } from "../appointments/api";
 import { listMedications } from "../medications/api";
+import { dosesInRange } from "../medications/schedule";
 import type { CalendarEvent, DoseLog } from "../../types/domain";
 
 async function listDoseLogsInRange(medicationIds: string[], start: Date, end: Date): Promise<DoseLog[]> {
@@ -24,9 +24,9 @@ async function listDoseLogsInRange(medicationIds: string[], start: Date, end: Da
 }
 
 /**
- * The Calendar Engine: merges medication doses + appointments + (future) custom
- * events into one sorted list for the given date range. This is what backs the
- * day/week/month views — see docs/ARCHITECTURE.md.
+ * The Calendar Engine: merges medication doses and appointments into one time-sorted list for the range.
+ * Includes stopped/finished medications so past days keep their history; each medication's own window
+ * (start, course end, stop time) decides which days it appears on.
  */
 export function useCalendarEvents(profileId: string | undefined, rangeStart: Date, rangeEnd: Date) {
   return useQuery({
@@ -35,31 +35,20 @@ export function useCalendarEvents(profileId: string | undefined, rangeStart: Dat
     queryFn: async (): Promise<CalendarEvent[]> => {
       const pid = profileId as string;
       const [medications, appointments] = await Promise.all([listMedications(pid), listAppointments(pid)]);
-      const doseLogs = await listDoseLogsInRange(
+      const logs = await listDoseLogsInRange(
         medications.map((m) => m.id),
         rangeStart,
         rangeEnd
       );
 
-      const doseLogByKey = new Map(doseLogs.map((d) => [`${d.medicationId}:${d.scheduledAt}`, d]));
-
-      const medicationEvents: CalendarEvent[] = medications.flatMap((medication) => {
-        const occurrences = occurrencesInRange(medication.recurrenceRule, rangeStart, rangeEnd, {
-          startDate: new Date(medication.startDate),
-          endDate: medication.endDate ? new Date(medication.endDate) : undefined,
-        });
-        return occurrences.map((at) => {
-          const iso = at.toISOString();
-          const dose = doseLogByKey.get(`${medication.id}:${iso}`) ?? {
-            id: `${medication.id}:${iso}`,
-            medicationId: medication.id,
-            scheduledAt: iso,
-            status: "pending" as const,
-            loggedAt: null,
-          };
-          return { kind: "medication" as const, at: iso, medication, dose };
-        });
-      });
+      const medicationEvents: CalendarEvent[] = medications.flatMap((medication) =>
+        dosesInRange(medication, rangeStart, rangeEnd, logs).map(({ at, dose }) => ({
+          kind: "medication" as const,
+          at,
+          medication,
+          dose,
+        }))
+      );
 
       const appointmentEvents: CalendarEvent[] = appointments
         .filter((a) => {

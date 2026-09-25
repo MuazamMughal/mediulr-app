@@ -26,9 +26,22 @@
     },
     "plugins": [
       "expo-router",
-      ["expo-splash-screen", { "backgroundColor": "#FAF8F5", "image": "./assets/icon.png", "imageWidth": 120 }],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAF8F5",
+          "image": "./assets/icon.png",
+          "imageWidth": 120
+        }
+      ],
       "expo-secure-store",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6fef4ae6-7c5a-4379-9107-b6f323131140"
+      }
+    }
   }
 }

@@ -62,10 +62,10 @@ export default function PaywallScreen() {
           label="Start free trial"
           onPress={() => {
             // TODO: wire up react-native-purchases purchase flow.
-            router.back();
+            router.dismiss();
           }}
         />
-        <Pressable style={styles.secondaryLink} onPress={() => router.back()}>
+        <Pressable style={styles.secondaryLink} onPress={() => router.dismiss()}>
           <AppText variant="bodySmall" color="tertiary">
             Not now
           </AppText>

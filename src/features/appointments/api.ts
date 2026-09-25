@@ -63,3 +63,10 @@ export async function updatePostVisitNotes(id: string, notes: string): Promise<v
   const { error } = await supabase.from("appointments").update({ post_visit_notes: notes }).eq("id", id);
   if (error) throw error;
 }
+
+/** Appointments across every profile the signed-in user manages (RLS scopes this to them). Used for reminders. */
+export async function listAllAppointmentsForUser(): Promise<Appointment[]> {
+  const { data, error } = await supabase.from("appointments").select("*");
+  if (error) throw error;
+  return data.map(fromRow);
+}

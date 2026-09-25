@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { describeRecurrence } from "../features/medications/describeRecurrence";
+import { describeCourse } from "../features/medications/describeCourse";
 import type { Medication } from "../types/domain";
 
 export function MedicationRow({ medication, onPress }: { medication: Medication; onPress: () => void }) {
@@ -10,6 +11,9 @@ export function MedicationRow({ medication, onPress }: { medication: Medication;
   const lowStock = medication.quantityOnHand != null && medication.refillThreshold != null
     ? medication.quantityOnHand <= medication.refillThreshold
     : false;
+
+  const course = describeCourse(medication);
+  const showCourse = course.status !== "Ongoing";
 
   return (
     <Pressable
@@ -26,6 +30,12 @@ export function MedicationRow({ medication, onPress }: { medication: Medication;
         <AppText variant="caption" color="secondary" style={styles.subtitle}>
           {medication.dosage} · {describeRecurrence(medication.recurrenceRule)}
         </AppText>
+        {showCourse && (
+          <AppText variant="caption" color={course.active ? "accent" : "tertiary"} weight="semibold" style={styles.subtitle}>
+            {course.status}
+            {course.range ? ` · ${course.range}` : ""}
+          </AppText>
+        )}
       </View>
       {medication.quantityOnHand != null && (
         <View style={styles.meta}>

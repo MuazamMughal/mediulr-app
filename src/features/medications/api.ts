@@ -14,6 +14,7 @@ function fromRow(row: {
   start_date: string;
   end_date: string | null;
   archived_at: string | null;
+  created_at: string;
 }): Medication {
   return {
     id: row.id,
@@ -27,16 +28,27 @@ function fromRow(row: {
     startDate: row.start_date,
     endDate: row.end_date,
     archivedAt: row.archived_at,
+    createdAt: row.created_at,
   };
 }
 
+/**
+ * Every medication for a profile, including stopped and finished ones — the calendar needs them
+ * to keep past days accurate. Callers filter for "active" with `isActiveMedication`.
+ */
 export async function listMedications(profileId: string): Promise<Medication[]> {
   const { data, error } = await supabase
     .from("medications")
     .select("*")
     .eq("profile_id", profileId)
-    .is("archived_at", null)
     .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data.map(fromRow);
+}
+
+/** Medications across every profile the signed-in user manages (RLS scopes this to them). Used for reminders. */
+export async function listAllMedicationsForUser(): Promise<Medication[]> {
+  const { data, error } = await supabase.from("medications").select("*");
   if (error) throw error;
   return data.map(fromRow);
 }

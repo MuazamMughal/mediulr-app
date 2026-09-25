@@ -5,6 +5,7 @@ import { useTheme } from "../src/theme/ThemeProvider";
 import { AppText } from "../src/components/AppText";
 import { AppCard } from "../src/components/AppCard";
 import { supabase } from "../src/lib/supabase";
+import { friendlyError } from "../src/lib/friendlyError";
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -25,6 +26,7 @@ export default function SettingsScreen() {
                 text: "Sign out",
                 style: "destructive",
                 onPress: async () => {
+                  // Cached data and scheduled reminders are cleared by the SIGNED_OUT listener in app/_layout.tsx.
                   await supabase.auth.signOut();
                   router.replace("/");
                 },
@@ -52,9 +54,21 @@ export default function SettingsScreen() {
                 {
                   text: "Delete",
                   style: "destructive",
-                  onPress: () => {
-                    // TODO: call a Supabase edge function with the service role to cascade-delete
-                    // the auth.users row (profiles/medications/etc. cascade via FK on delete).
+                  onPress: async () => {
+                    const { error } = await supabase.rpc("delete_my_account");
+                    if (error) {
+                      const notSetUp = /could not find the function|delete_my_account/i.test(error.message);
+                      Alert.alert(
+                        "Couldn't delete account",
+                        notSetUp
+                          ? "Account deletion isn't set up on the server yet (run supabase/migrations/0002_delete_account.sql)."
+                          : friendlyError(error)
+                      );
+                      return;
+                    }
+                    // The auth user is gone, so there's no server session to revoke — just clear the local one.
+                    await supabase.auth.signOut({ scope: "local" });
+                    router.replace("/");
                   },
                 },
               ]
