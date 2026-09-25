@@ -1,5 +1,5 @@
 /**
- * Hand-written stand-in matching supabase/migrations/0001_init.sql (+ 0003_nutrition_exercise.sql).
+ * Hand-written stand-in matching supabase/migrations/0001_init.sql (+ 0003_nutrition_exercise.sql, 0004_guardians.sql).
  * Once a real Supabase project exists, regenerate with:
  *   npx supabase gen types typescript --project-id <id> > src/types/database.ts
  */
@@ -165,6 +165,32 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["exercise_entries"]["Insert"]>;
+        Relationships: [];
+      };
+      guardians: {
+        Row: {
+          id: string;
+          profile_id: string;
+          name: string;
+          relationship: string | null;
+          phone: string;
+          notify_on_missed: boolean;
+          linked_user_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          name: string;
+          relationship?: string | null;
+          phone: string;
+          notify_on_missed?: boolean;
+          linked_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["guardians"]["Insert"]>;
         Relationships: [];
       };
       reminders: {

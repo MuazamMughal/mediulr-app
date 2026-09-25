@@ -25,6 +25,9 @@ import { useAppointments } from "../../src/features/appointments/useAppointments
 import { useFoodForRange, useHasAnyFood } from "../../src/features/nutrition/useFood";
 import { useExerciseForRange, useHasAnyExercise } from "../../src/features/exercise/useExercise";
 import { useMonthLogs } from "../../src/features/lifestyle/useMonthLogs";
+import { useGuardians } from "../../src/features/guardians/useGuardians";
+import { alertGuardians, tellLabel } from "../../src/features/guardians/logic";
+import { tellGuardians } from "../../src/features/guardians/tellGuardians";
 import { mergeTimeline, summarizeLogs } from "../../src/features/lifestyle/logic";
 import type { CalendarEvent } from "../../src/types/domain";
 
@@ -73,6 +76,9 @@ export default function CalendarScreen() {
   const { data: allMedications, isLoading: medsLoading } = useAllMedications(profile?.id);
   const { data: allVisits, isLoading: visitsLoading } = useAppointments(profile?.id);
   const logDose = useLogDose();
+  // Guardians are optional extras: if they fail to load, the missed-dose row simply has no "Tell" button.
+  const { data: guardians } = useGuardians(profile?.id);
+  const toTell = useMemo(() => alertGuardians(guardians), [guardians]);
 
   // "Loading" here is only the first load. Switching days keeps the calendar on screen and just skeletons the timeline.
   const noMedsOrVisits = (allMedications?.length ?? 0) === 0 && (allVisits?.length ?? 0) === 0;
@@ -244,6 +250,15 @@ export default function CalendarScreen() {
                 event={event}
                 onMarkTaken={(id, at) => handleDoseAction(id, at, "taken")}
                 onSkip={(id, at) => handleDoseAction(id, at, "skipped")}
+                tellGuardianLabel={toTell.length > 0 ? tellLabel(toTell) : undefined}
+                onTellGuardian={(medication, at) =>
+                  tellGuardians(toTell, {
+                    patientName: isViewingSelf ? null : (profile?.displayName ?? null),
+                    medicationName: medication.name,
+                    dosage: medication.dosage,
+                    scheduledAt: new Date(at),
+                  })
+                }
                 onPress={
                   event.kind === "medication"
                     ? () => router.push(`/medication/${event.medication.id}`)

@@ -7,12 +7,15 @@ import { DoseCheckButton } from "./DoseCheckButton";
 import { mealIcon, mealLabel } from "../features/nutrition/constants";
 import { exerciseIcon, intensityLabel } from "../features/exercise/constants";
 import { exerciseTitle, formatDuration } from "../features/exercise/logic";
-import type { CalendarEvent } from "../types/domain";
+import type { CalendarEvent, Medication } from "../types/domain";
 
 interface TimelineItemProps {
   event: CalendarEvent;
   onMarkTaken?: (medicationId: string, scheduledAt: string) => void;
   onSkip?: (medicationId: string, scheduledAt: string) => void;
+  /** When set, a missed dose offers this action (e.g. "Tell Mom"). */
+  tellGuardianLabel?: string;
+  onTellGuardian?: (medication: Medication, scheduledAt: string) => void;
   onPress?: () => void;
 }
 
@@ -20,7 +23,7 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-export function TimelineItem({ event, onMarkTaken, onSkip, onPress }: TimelineItemProps) {
+export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, onTellGuardian, onPress }: TimelineItemProps) {
   const theme = useTheme();
 
   if (event.kind === "medication") {
@@ -66,11 +69,26 @@ export function TimelineItem({ event, onMarkTaken, onSkip, onPress }: TimelineIt
           </View>
           {!done && (
             <Animated.View exiting={FadeOut.duration(150)}>
-              <Pressable onPress={() => onSkip?.(medication.id, event.at)} hitSlop={6} style={styles.skipLink}>
-                <AppText variant="caption" color="tertiary">
-                  Skip
-                </AppText>
-              </Pressable>
+              <View style={styles.linkRow}>
+                <Pressable onPress={() => onSkip?.(medication.id, event.at)} hitSlop={6} style={styles.skipLink}>
+                  <AppText variant="caption" color="tertiary">
+                    Skip
+                  </AppText>
+                </Pressable>
+                {missed && onTellGuardian && tellGuardianLabel && (
+                  <Pressable
+                    onPress={() => onTellGuardian(medication, event.at)}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${tellGuardianLabel} that you missed ${medication.name}`}
+                    style={styles.skipLink}
+                  >
+                    <AppText variant="caption" color="accent" weight="semibold">
+                      {tellGuardianLabel}
+                    </AppText>
+                  </Pressable>
+                )}
+              </View>
             </Animated.View>
           )}
         </Animated.View>
@@ -192,5 +210,6 @@ const styles = StyleSheet.create({
   dosagePill: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 999 },
   subtitle: { marginTop: 3 },
   doneText: { opacity: 0.5, textDecorationLine: "line-through" },
-  skipLink: { marginTop: 6, alignSelf: "flex-start" },
+  linkRow: { flexDirection: "row", gap: 18 },
+  skipLink: { marginTop: 6, alignSelf: "flex-start", minHeight: 24, justifyContent: "center" },
 });

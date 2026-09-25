@@ -75,6 +75,15 @@ function Navigation() {
         name="exercise/[id]"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
+      <Stack.Screen name="guardians" options={{ title: "Guardians" }} />
+      <Stack.Screen
+        name="guardian/new"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
+      <Stack.Screen
+        name="guardian/[id]"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
       <Stack.Screen
         name="paywall"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}

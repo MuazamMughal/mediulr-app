@@ -91,6 +91,23 @@ What activity a profile did, when, and for how long. Added in `0003_nutrition_ex
 
 Both tables are RLS-scoped through `profiles.owner_id = auth.uid()`, so each family member's entries are separate and only their owner can read or change them. Deleting a profile or the account removes them (cascade), so `delete_my_account()` needed no change. Reminders for meals/exercise are deliberately not modeled yet — extend `reminders.source_type` and `notifications/plan.ts` when they're wanted.
 
+### `guardians`
+
+People a patient trusts to be told about a missed dose. Contact details only, typed in by the patient. Added in `0004_guardians.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `profile_id` | uuid | → `profiles.id`, cascade delete. Guardians belong to the profile they watch over, so each family member has their own |
+| `name` | text | 1–80 chars |
+| `relationship` | text | Optional label ("Parent", "Partner"…) |
+| `phone` | text | Digits with optional leading `+`, 7–15 digits (checked in the database too) |
+| `notify_on_missed` | boolean | Whether a "Tell them" button is offered on missed doses (default true) |
+| `linked_user_id` | uuid | Reserved for a future linked-account mode; unused today |
+| `created_at`, `updated_at` | timestamptz | |
+
+At most 3 per profile (enforced by a trigger). RLS-scoped like everything else, so a guardian's phone number is only ever visible to the account that entered it.
+
 ### `reminders`
 Generic reminder config, one per medication or appointment (1:many — a dose can have multiple reminder offsets).
 

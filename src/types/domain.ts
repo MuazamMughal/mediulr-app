@@ -52,6 +52,16 @@ export interface Reminder {
   escalationEnabled: boolean;
 }
 
+/** A trusted person the patient can tell about a missed dose. Contact details only; Mediulr never messages them. */
+export interface Guardian {
+  id: string;
+  profileId: string;
+  name: string;
+  relationship: string | null;
+  phone: string;
+  notifyOnMissed: boolean;
+}
+
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "other";
 
 /** What the user ate and when. A log entry, not a nutrition record — no calories or health judgements. */

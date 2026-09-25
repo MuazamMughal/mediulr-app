@@ -22,6 +22,7 @@ This means, concretely:
 - ❌ No provider login/dashboard of any kind
 - ❌ No booking or appointment-request flow to a real clinic system
 - ❌ No messaging between a patient and a provider through the app
+- ✅ Guardians: the patient types in a trusted person's number, and on a missed dose the app opens the *patient's own* messaging app with a short prefilled note. The patient presses Send; Mediulr never contacts the guardian, and the guardian has no access to any data. **Automatic alerts (push/SMS sent by a server on the patient's behalf) or a guardian login that can see the schedule would cross this line's spirit and need a consent + privacy review first.**
 - ✅ A patient exporting their own PDF/summary and sending it themselves (email, AirDrop, printout) is fine — **the patient controls the transmission, the app never does**
 
 If a future feature request sounds like any of the ❌ items above, it requires a deliberate compliance review before it's built — not a judgment call made mid-sprint. See `docs/ROADMAP.md` for what's intentionally out of scope.

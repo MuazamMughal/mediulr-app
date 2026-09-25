@@ -43,6 +43,10 @@ Also run `supabase/migrations/0002_delete_account.sql` the same way. It adds the
 
 Run `supabase/migrations/0003_nutrition_exercise.sql` too. It adds the `food_entries` and `exercise_entries` tables (with the same Row Level Security as the rest) that power the Lifestyle tab and the food/exercise entries on the calendar. It only adds tables, so it's safe on a database that already has data. Until it's applied, medications and doctor visits work as before, and the Lifestyle tab shows "Couldn't load".
 
+### Fourth migration (guardians)
+
+Run `supabase/migrations/0004_guardians.sql` as well. It adds the `guardians` table behind the "Guardian" row on the Medications tab and the "Tell Mom" button on missed doses. Until it's applied that row simply doesn't appear, and everything else works.
+
 ## 4. Turn off email confirmation (for local testing)
 
 By default Supabase requires clicking an email confirmation link before sign-in works. During local development there's nowhere for that link to redirect to, so sign-in fails with "email not confirmed."

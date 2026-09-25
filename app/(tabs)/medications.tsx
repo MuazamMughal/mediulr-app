@@ -8,6 +8,8 @@ import { AppButton } from "../../src/components/AppButton";
 import { EmptyState } from "../../src/components/EmptyState";
 import { SkeletonRow } from "../../src/components/Skeleton";
 import { MedicationRow } from "../../src/components/MedicationRow";
+import { GuardianBanner } from "../../src/components/GuardianBanner";
+import { useGuardians } from "../../src/features/guardians/useGuardians";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useFinishedMedications, useMedications } from "../../src/features/medications/useMedications";
 import type { Medication } from "../../src/types/domain";
@@ -19,6 +21,8 @@ export default function MedicationsScreen() {
   const { data: active, isLoading: activeLoading } = useMedications(profile?.id);
   const { data: finished, isLoading: finishedLoading } = useFinishedMedications(profile?.id);
   const isLoading = !profile || activeLoading || finishedLoading;
+  // Optional extra: until guardians have loaded (or if they fail to), the banner is simply absent.
+  const { data: guardians } = useGuardians(profile?.id);
 
   const sections = useMemo(() => {
     const result: { title: string; data: Medication[] }[] = [];
@@ -63,6 +67,7 @@ export default function MedicationsScreen() {
           sections={sections}
           keyExtractor={(m) => m.id}
           stickySectionHeadersEnabled={false}
+          ListHeaderComponent={guardians ? <GuardianBanner guardians={guardians} onPress={() => router.push("/guardians")} /> : null}
           renderSectionHeader={({ section }) =>
             // The first section needs no label when it's the only one.
             sections.length > 1 || section.title === "Completed" ? (
