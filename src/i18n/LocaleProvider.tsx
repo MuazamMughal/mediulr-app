@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { Alert, I18nManager } from "react-native";
+import { Alert, I18nManager, Platform } from "react-native";
 import { getLocales } from "expo-localization";
 import { usePreferences } from "../features/preferences/Preferences";
 import { resolveLocale, type LanguagePref } from "./core";
@@ -32,6 +32,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const askedRestart = useRef(false);
   useEffect(() => {
+    // On web the browser does the mirroring, driven by the page's direction; no restart is needed.
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      document.documentElement.dir = i18n.isRTL ? "rtl" : "ltr";
+      document.documentElement.lang = i18n.locale;
+      return;
+    }
     I18nManager.allowRTL(true);
     if (I18nManager.isRTL !== i18n.isRTL) {
       I18nManager.forceRTL(i18n.isRTL);

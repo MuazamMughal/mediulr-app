@@ -530,4 +530,6 @@ export const ur: Record<keyof typeof en, string> = {
   "notif.escalateBody": "وقت {time} تھا۔ اگر آپ چاہیں کہ انہیں پتا چلے تو \"نگران کو بتائیں\" دبائیں۔",
   "notif.visitTitle": "آنے والی ملاقات: {provider}",
   "notif.visitFallback": "ڈاکٹر کی ملاقات",
+  "profile.selfLabel": "{name} (آپ)",
+  "profile.me": "میں",
 };

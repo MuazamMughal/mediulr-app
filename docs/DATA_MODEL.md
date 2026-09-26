@@ -110,6 +110,22 @@ People a patient trusts to be told about a missed dose. Contact details only, ty
 
 At most 3 per profile (enforced by a trigger). RLS-scoped like everything else, so a guardian's phone number is only ever visible to the account that entered it.
 
+### `custom_reminders` / `reminder_completions`
+
+Anything a person wants to be reminded about that isn't a medication or a visit (a blood test, a vaccine, "check blood pressure"). Added in `0006_custom_reminders.sql`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `profile_id` | uuid | → `profiles.id`, cascade delete |
+| `title` | text | 1–120 chars |
+| `notes` | text | Optional, ≤ 500 |
+| `recurrence_rule` | jsonb | Same shapes as medications, plus `monthly` `{day, at[]}` and `every_n_days` `{every, from, at[]}` |
+| `start_date` / `end_date` | date | End optional; must not precede start |
+| `created_at`, `updated_at` | timestamptz | |
+
+`reminder_completions (reminder_id, scheduled_at, completed_at)` has one row per ticked-off occurrence (primary key `(reminder_id, scheduled_at)`); un-ticking deletes the row. Both tables are RLS-scoped through `profiles.owner_id`. (The older `reminders` table is unused.)
+
 ### `reminders`
 Generic reminder config, one per medication or appointment (1:many — a dose can have multiple reminder offsets).
 

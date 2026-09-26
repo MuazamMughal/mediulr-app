@@ -528,4 +528,6 @@ export const en = {
   "notif.escalateBody": "Due at {time}. Tap \"Tell guardian\" if you'd like them to know.",
   "notif.visitTitle": "Upcoming visit: {provider}",
   "notif.visitFallback": "Doctor visit",
+  "profile.selfLabel": "{name} (You)",
+  "profile.me": "Me",
 } as const;

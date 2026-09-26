@@ -51,6 +51,10 @@ Run `supabase/migrations/0004_guardians.sql` as well. It adds the `guardians` ta
 
 Run `supabase/migrations/0005_refill_countdown.sql`. It makes each taken dose count a medication's supply down (see [`RELIABILITY.md`](RELIABILITY.md)). Until it's applied, supply numbers simply won't decrease; nothing else is affected.
 
+### Sixth migration (custom reminders)
+
+Run `supabase/migrations/0006_custom_reminders.sql`. It adds the tables behind the Reminders screen (Profile → Reminders) and the reminders shown on the calendar. Until it's applied, Reminders shows "Couldn't load reminders" and everything else works as before.
+
 ## 4. Turn off email confirmation (for local testing)
 
 By default Supabase requires clicking an email confirmation link before sign-in works. During local development there's nowhere for that link to redirect to, so sign-in fails with "email not confirmed."

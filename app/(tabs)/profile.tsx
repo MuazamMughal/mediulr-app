@@ -45,6 +45,8 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useI18n();
+  // The account's own profile is created with the default name "Me"; show that in the current language.
+  const shownName = (p: { isSelf: boolean; displayName: string }) => (p.isSelf && p.displayName === "Me" ? t("profile.me") : p.displayName);
   const { data: profiles } = useProfiles();
   const { profile: activeProfile, setActiveProfileId } = useActiveProfile();
   const addDependent = useAddDependentProfile();
@@ -70,7 +72,7 @@ export default function ProfileScreen() {
               <View style={styles.selfRow}>
                 <Avatar name={self.displayName} size={56} />
                 <View style={{ marginStart: 14 }}>
-                  <AppText variant="h2">{self.displayName}</AppText>
+                  <AppText variant="h2">{shownName(self)}</AppText>
                   <AppText variant="bodySmall" color="secondary">
                     {t("profile.account")}
                   </AppText>
@@ -97,7 +99,7 @@ export default function ProfileScreen() {
                     >
                       <Avatar name={p.displayName} size={40} />
                       <View style={{ flex: 1, marginStart: 12 }}>
-                        <AppText variant="bodyMedium">{p.isSelf ? `${p.displayName} (You)` : p.displayName}</AppText>
+                        <AppText variant="bodyMedium">{p.isSelf ? t("profile.selfLabel", { name: shownName(p) }) : p.displayName}</AppText>
                         {isActive && (
                           <AppText variant="caption" color="accent" weight="semibold">
                             {t("profile.viewingNow")}

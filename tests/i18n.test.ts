@@ -87,3 +87,65 @@ test("the typed translator resolves real keys in both languages", () => {
   assert.equal(createI18n("ur").t("common.cancel"), "منسوخ کریں");
   assert.equal(createI18n("ur").isRTL, true);
 });
+
+// --- the helpers that build user-facing text, in Urdu -----------------------------------------------
+import { describeCourse } from "../src/features/medications/describeCourse";
+import { describeRecurrence, describeRecurrenceTimes } from "../src/features/medications/describeRecurrence";
+import { refillHeadline, refillStatus } from "../src/features/medications/refill";
+import { formatDuration, exerciseTitle } from "../src/features/exercise/logic";
+import { mealLabel } from "../src/features/nutrition/constants";
+import { summarizeLogs } from "../src/features/lifestyle/logic";
+import { buildMissedDoseMessage, relationshipLabel, tellLabel } from "../src/features/guardians/logic";
+import { relativeDayLabel } from "../src/lib/dayTime";
+import type { Guardian, Medication } from "../src/types/domain";
+
+const urdu = createI18n("ur");
+const english = createI18n("en");
+const testMed = (over: Partial<Medication> = {}): Medication => ({
+  id: "m1", profileId: "p1", name: "Amoxicillin", dosage: "500mg", instructions: null,
+  recurrenceRule: { type: "times_per_day", count: 3, at: ["08:00", "14:00", "20:00"] },
+  quantityOnHand: null, refillThreshold: null, startDate: "2026-09-01", endDate: null, archivedAt: null, createdAt: "2026-09-01T00:00:00.000Z", ...over,
+});
+
+test("medication wording follows the language: course status, schedule, times, refill", () => {
+  const now = new Date(2026, 8, 25, 10, 0);
+  assert.equal(describeCourse(testMed(), now, urdu).status, "جاری");
+  assert.equal(describeCourse(testMed({ endDate: "2026-09-29" }), now, urdu).status, "5 دن باقی");
+  assert.equal(describeCourse(testMed({ endDate: "2026-09-25" }), now, urdu).status, "آخری دن");
+  assert.equal(describeCourse(testMed({ endDate: "2026-09-29" }), now, english).kind, "daysLeft", "logic uses kind, not the wording");
+  assert.equal(describeRecurrence(testMed().recurrenceRule, urdu), "دن میں 3 بار");
+  assert.equal(describeRecurrenceTimes(testMed().recurrenceRule, urdu), "8:00 صبح، 2:00 شام، 8:00 شام");
+  assert.equal(describeRecurrenceTimes(testMed().recurrenceRule, english), "8:00 AM, 2:00 PM, 8:00 PM");
+  const low = refillStatus(testMed({ quantityOnHand: 8 }), now)!;
+  assert.equal(refillHeadline(low, urdu), "تقریباً 2 دن باقی");
+  assert.equal(refillHeadline(refillStatus(testMed({ quantityOnHand: 0 }), now)!, urdu), "ختم — دوبارہ خریدنا ہوگا");
+});
+
+test("durations, meals, exercise and day summaries in Urdu", () => {
+  assert.equal(formatDuration(30, urdu), "30 منٹ");
+  assert.equal(formatDuration(60, urdu), "1 گھنٹہ");
+  assert.equal(formatDuration(90, urdu), "1 گھنٹہ 30 منٹ");
+  assert.equal(mealLabel("breakfast", urdu), "ناشتہ");
+  assert.equal(exerciseTitle({ name: null, exerciseType: "walking" }, urdu), "چہل قدمی");
+  assert.equal(exerciseTitle({ name: "Badminton", exerciseType: "other" }, urdu), "Badminton", "a name the person typed is never translated");
+  assert.deepEqual(summarizeLogs([{ id: "a" }, { id: "b" }], [{ durationMinutes: 45 }], urdu), ["2 کھانے", "45 منٹ فعال"]);
+});
+
+test("guardian text in Urdu: button, relationship, and the message that gets sent", () => {
+  const g = (name: string): Guardian => ({ id: name, profileId: "p1", name, relationship: null, phone: "+15551234567", notifyOnMissed: true });
+  assert.equal(tellLabel([g("امی جان")], urdu), "امی کو بتائیں", "first name only");
+  assert.equal(tellLabel([g("Mom"), g("Dad")], urdu), "نگرانوں کو بتائیں");
+  assert.equal(relationshipLabel("Parent", urdu), "والدین");
+  assert.equal(relationshipLabel("Neighbour", urdu), "Neighbour", "a value we don't know is shown as stored");
+  const at = new Date(2026, 8, 25, 8, 0);
+  assert.equal(buildMissedDoseMessage({ patientName: null, medicationName: "Amoxicillin", dosage: "500mg", scheduledAt: at }, urdu), "مجھ سے Amoxicillin (500mg) کی 8:00 صبح کی خوراک رہ گئی۔ میڈیولر سے بھیجا گیا۔");
+  assert.ok(buildMissedDoseMessage({ patientName: "ابو", medicationName: "X", dosage: "1", scheduledAt: at }, urdu).startsWith("ابو سے X"));
+});
+
+test("relative day names in Urdu", () => {
+  const now = new Date(2026, 8, 25, 12, 0);
+  assert.equal(relativeDayLabel(new Date(2026, 8, 25, 1, 0), now, urdu), "آج");
+  assert.equal(relativeDayLabel(new Date(2026, 8, 24, 1, 0), now, urdu), "گزشتہ کل");
+  assert.equal(relativeDayLabel(new Date(2026, 8, 26, 1, 0), now, urdu), "آئندہ کل");
+  assert.equal(relativeDayLabel(new Date(2026, 8, 20, 1, 0), now, urdu), "اتوار، 20 ستمبر");
+});
