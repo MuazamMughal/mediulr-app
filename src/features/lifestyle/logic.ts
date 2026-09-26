@@ -1,5 +1,6 @@
 import { toLocalDateString } from "../../lib/dates";
 import { formatDuration } from "../exercise/logic";
+import { getI18n, type I18n } from "../../i18n";
 import type { CalendarEvent, ExerciseEntry, FoodEntry } from "../../types/domain";
 import type { ReminderOccurrence } from "../reminders/schedule";
 
@@ -21,12 +22,12 @@ export function buildMonthLogs(mealTimes: string[], activityTimes: string[], rem
 }
 
 /** Calm one-liners for a day: "3 meals", "45 min active". Empty when nothing was logged. */
-export function summarizeLogs(food: Pick<FoodEntry, "id">[], exercise: Pick<ExerciseEntry, "durationMinutes">[]): string[] {
+export function summarizeLogs(food: Pick<FoodEntry, "id">[], exercise: Pick<ExerciseEntry, "durationMinutes">[], i18n: I18n = getI18n()): string[] {
   const parts: string[] = [];
-  if (food.length > 0) parts.push(`${food.length} ${food.length === 1 ? "meal" : "meals"}`);
+  if (food.length > 0) parts.push(i18n.tn("lifestyle.meals", food.length));
   if (exercise.length > 0) {
     const minutes = exercise.reduce((sum, e) => sum + e.durationMinutes, 0);
-    parts.push(`${formatDuration(minutes)} active`);
+    parts.push(i18n.t("lifestyle.activeFor", { duration: formatDuration(minutes, i18n) }));
   }
   return parts;
 }

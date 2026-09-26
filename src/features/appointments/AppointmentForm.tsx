@@ -11,6 +11,7 @@ import { SheetHeader } from "../../components/SheetHeader";
 import { DateTimeField } from "../../components/DateTimeField";
 import { friendlyError } from "../../lib/friendlyError";
 import { useActiveProfile } from "../profile/ActiveProfile";
+import { useI18n } from "../../i18n/LocaleProvider";
 import { useAddAppointment, useDeleteAppointment, useUpdateAppointment } from "./useAppointments";
 import { requestNotificationPermission } from "../notifications/scheduleNotifications";
 import type { Appointment } from "../../types/domain";
@@ -23,6 +24,7 @@ export function AppointmentForm(props: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useActiveProfile();
+  const { t } = useI18n();
   const addAppointment = useAddAppointment();
   const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
@@ -70,22 +72,22 @@ export function AppointmentForm(props: Props) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       router.dismiss();
     } catch (err) {
-      Alert.alert(appointment ? "Couldn't update doctor visit" : "Couldn't save doctor visit", friendlyError(err));
+      Alert.alert(appointment ? t("visits.form.errUpdate") : t("visits.form.errSave"), friendlyError(err));
     }
   }
 
   function handleDelete() {
     if (!appointment) return;
-    Alert.alert("Delete this visit?", "It will be removed from your calendar and its reminders cancelled. Any notes you wrote about it are deleted too.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("visits.form.deleteTitle"), t("visits.form.deleteBody"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: () =>
           deleteAppointment.mutate(appointment.id, {
             // The visit's detail screen underneath closes itself once its visit is gone.
             onSuccess: () => router.dismiss(),
-            onError: (err) => Alert.alert("Couldn't delete visit", friendlyError(err)),
+            onError: (err) => Alert.alert(t("visits.form.errDelete"), friendlyError(err)),
           }),
       },
     ]);
@@ -93,30 +95,30 @@ export function AppointmentForm(props: Props) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <SheetHeader title={editing ? "Edit doctor visit" : "Add doctor visit"} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("visits.form.editTitle") : t("visits.form.addTitle")} onClose={() => router.dismiss()} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
           {editing
-            ? "Reminders move with the visit."
-            : `${profile && !profile.isSelf ? `Adding for ${profile.displayName}. ` : ""}We'll remind you the day before and an hour before.`}
+            ? t("visits.form.editHint")
+            : `${profile && !profile.isSelf ? `${t("common.addingFor", { name: profile.displayName })} ` : ""}${t("visits.form.addHint")}`}
         </AppText>
 
         <View style={styles.field}>
-          <AppInput label="Provider name" placeholder="e.g. Dr. Patel" value={providerName} onChangeText={setProviderName} autoFocus={!editing} />
+          <AppInput label={t("visits.form.provider")} placeholder={t("visits.form.providerPlaceholder")} value={providerName} onChangeText={setProviderName} autoFocus={!editing} />
         </View>
         <View style={styles.field}>
-          <AppInput label="Specialty (optional)" placeholder="e.g. Cardiology" value={specialty} onChangeText={setSpecialty} />
+          <AppInput label={t("visits.form.specialty")} placeholder={t("visits.form.specialtyPlaceholder")} value={specialty} onChangeText={setSpecialty} />
         </View>
         <View style={styles.field}>
-          <AppInput label="Location (optional)" placeholder="e.g. Main St Clinic" value={location} onChangeText={setLocation} />
+          <AppInput label={t("visits.form.location")} placeholder={t("visits.form.locationPlaceholder")} value={location} onChangeText={setLocation} />
         </View>
         <View style={styles.field}>
-          <DateTimeField label="Date & time" value={scheduledAt} onChange={setScheduledAt} tint={theme.colors.visit} />
+          <DateTimeField label={t("visits.form.dateTime")} value={scheduledAt} onChange={setScheduledAt} tint={theme.colors.visit} />
         </View>
         <View style={styles.field}>
           <AppInput
-            label="Notes to bring / prep (optional)"
-            placeholder="e.g. bring insurance card, fasting required"
+            label={t("visits.form.prep")}
+            placeholder={t("visits.form.prepPlaceholder")}
             value={preVisitNotes}
             onChangeText={setPreVisitNotes}
             multiline
@@ -126,14 +128,14 @@ export function AppointmentForm(props: Props) {
 
         {editing && (
           <View style={styles.destructive}>
-            <AppButton label="Delete visit" variant="destructive" onPress={handleDelete} loading={deleteAppointment.isPending} />
+            <AppButton label={t("visits.form.delete")} variant="destructive" onPress={handleDelete} loading={deleteAppointment.isPending} />
           </View>
         )}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16, borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
         <AppButton
-          label={editing ? "Save changes" : "Save doctor visit"}
+          label={editing ? t("common.saveChanges") : t("visits.form.save")}
           onPress={handleSave}
           disabled={!canSave}
           loading={addAppointment.isPending || updateAppointment.isPending}

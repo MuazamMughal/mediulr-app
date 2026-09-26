@@ -9,12 +9,14 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { SkeletonRow } from "../../src/components/Skeleton";
 import { VisitCard } from "../../src/components/VisitCard";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 import { useAppointments } from "../../src/features/appointments/useAppointments";
 import type { Appointment } from "../../src/types/domain";
 
 export default function AppointmentsScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useI18n();
   const { profile } = useActiveProfile();
   const { data: appointments, isLoading: queryLoading } = useAppointments(profile?.id);
   const isLoading = !profile || queryLoading;
@@ -28,15 +30,15 @@ export default function AppointmentsScreen() {
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
 
     const result: { title: string; data: Appointment[] }[] = [];
-    if (upcoming.length) result.push({ title: "Upcoming", data: upcoming });
-    if (past.length) result.push({ title: "Past", data: past });
+    if (upcoming.length) result.push({ title: t("visits.upcoming"), data: upcoming });
+    if (past.length) result.push({ title: t("visits.past"), data: past });
     return result;
-  }, [appointments]);
+  }, [appointments, t]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top"]}>
       <View style={styles.header}>
-        <AppText variant="h1">Doctor Visits</AppText>
+        <AppText variant="h1">{t("appointments.title")}</AppText>
       </View>
 
       {isLoading && (
@@ -50,9 +52,9 @@ export default function AppointmentsScreen() {
       {!isLoading && sections.length === 0 && (
         <EmptyState
           icon="calendar-outline"
-          title="No visits on the calendar"
-          description="Add an upcoming visit and Mediulr will remind you the day before and an hour before."
-          actionLabel="Add doctor visit"
+          title={t("visits.empty.title")}
+          description={t("visits.empty.text")}
+          actionLabel={t("visits.empty.action")}
           onAction={() => router.push("/appointment/new")}
         />
       )}
@@ -76,7 +78,7 @@ export default function AppointmentsScreen() {
 
       {!isLoading && sections.length > 0 && (
         <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
-          <AppButton label="+ Add doctor visit" variant="secondary" onPress={() => router.push("/appointment/new")} />
+          <AppButton label={`+ ${t("visits.empty.action")}`} variant="secondary" onPress={() => router.push("/appointment/new")} />
         </View>
       )}
     </SafeAreaView>

@@ -58,6 +58,6 @@ export function AppInput({ label, error, style, onFocus, onBlur, ...props }: App
 
 const styles = StyleSheet.create({
   container: { gap: 6 },
-  label: { marginLeft: 2 },
-  error: { marginLeft: 2 },
+  label: { marginStart: 2 },
+  error: { marginStart: 2 },
 });

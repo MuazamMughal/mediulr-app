@@ -5,11 +5,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../src/theme/ThemeProvider";
 import { AppText } from "../src/components/AppText";
 import { AppButton } from "../src/components/AppButton";
+import { useI18n } from "../src/i18n/LocaleProvider";
 
 const FEATURES = [
-  { icon: "people-outline" as const, label: "Unlimited family & caregiver profiles" },
-  { icon: "document-text-outline" as const, label: "Health-record PDF export" },
-  { icon: "notifications-outline" as const, label: "Priority reminder customization" },
+  { icon: "people-outline" as const, key: "paywall.feature1" as const },
+  { icon: "document-text-outline" as const, key: "paywall.feature2" as const },
+  { icon: "notifications-outline" as const, key: "paywall.feature3" as const },
 ];
 
 /**
@@ -19,6 +20,7 @@ const FEATURES = [
  */
 export default function PaywallScreen() {
   const theme = useTheme();
+  const { t } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -30,20 +32,20 @@ export default function PaywallScreen() {
         </View>
 
         <AppText variant="h1" style={styles.title}>
-          Mediulr Premium
+          {t("paywall.title")}
         </AppText>
         <AppText variant="body" color="secondary" style={styles.subtitle}>
-          A better way to stay on top of your health.
+          {t("paywall.subtitle")}
         </AppText>
 
         <View style={styles.features}>
           {FEATURES.map((f) => (
-            <View key={f.label} style={styles.featureRow}>
+            <View key={f.key} style={styles.featureRow}>
               <View style={[styles.featureIcon, { backgroundColor: theme.colors.surfaceSunken }]}>
                 <Ionicons name={f.icon} size={16} color={theme.colors.accent} />
               </View>
               <AppText variant="body" style={{ flex: 1 }}>
-                {f.label}
+                {t(f.key)}
               </AppText>
             </View>
           ))}
@@ -52,14 +54,14 @@ export default function PaywallScreen() {
         <View style={[styles.priceCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <AppText variant="display">$2.99</AppText>
           <AppText variant="bodySmall" color="secondary">
-            per month · 7-day free trial
+            {t("paywall.price")}
           </AppText>
         </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <AppButton
-          label="Start free trial"
+          label={t("paywall.start")}
           onPress={() => {
             // TODO: wire up react-native-purchases purchase flow.
             router.dismiss();
@@ -67,12 +69,12 @@ export default function PaywallScreen() {
         />
         <Pressable style={styles.secondaryLink} onPress={() => router.dismiss()}>
           <AppText variant="bodySmall" color="tertiary">
-            Not now
+            {t("paywall.notNow")}
           </AppText>
         </Pressable>
         <Pressable style={styles.secondaryLink}>
           <AppText variant="caption" color="tertiary">
-            Restore purchase
+            {t("paywall.restore")}
           </AppText>
         </Pressable>
       </View>

@@ -3,7 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
-import { formatTimeParts, from12Hour, shiftMinutes, to12Hour } from "../lib/timeParts";
+import { from12Hour, shiftMinutes, to12Hour } from "../lib/timeParts";
+import { useI18n } from "../i18n/LocaleProvider";
 
 interface TimePanelProps {
   hour: number; // 0–23
@@ -21,8 +22,9 @@ const COLUMNS = 6;
  * accidentally reopen. ±1 minute buttons handle times that aren't on a five-minute mark.
  */
 export function TimePanel({ hour, minute, onChange }: TimePanelProps) {
-  const theme = useTheme();
+  const { t, fmt } = useI18n();
   const { hour12, pm } = to12Hour(hour);
+  const shown = fmt.clock({ hour, minute });
 
   function set(next: { hour?: number; minute?: number }) {
     Haptics.selectionAsync().catch(() => undefined);
@@ -37,26 +39,26 @@ export function TimePanel({ hour, minute, onChange }: TimePanelProps) {
   return (
     <View>
       <View style={styles.readout}>
-        <Nudge icon="remove" label="One minute earlier" onPress={() => nudge(-1)} />
-        <AppText variant="h1" accessibilityLiveRegion="polite" accessibilityLabel={`Time ${formatTimeParts({ hour, minute })}`}>
-          {formatTimeParts({ hour, minute })}
+        <Nudge icon="remove" label={t("picker.oneMinuteEarlier")} onPress={() => nudge(-1)} />
+        <AppText variant="h1" accessibilityLiveRegion="polite" accessibilityLabel={t("picker.timeValue", { time: shown })}>
+          {shown}
         </AppText>
-        <Nudge icon="add" label="One minute later" onPress={() => nudge(1)} />
+        <Nudge icon="add" label={t("picker.oneMinuteLater")} onPress={() => nudge(1)} />
       </View>
 
       <AppText variant="caption" color="secondary" style={styles.label}>
-        Hour
+        {t("picker.hour")}
       </AppText>
       <Grid
-        items={HOURS.map((h) => ({ key: h, text: String(h), selected: h === hour12, a11y: `${h} o'clock` }))}
+        items={HOURS.map((h) => ({ key: h, text: String(h), selected: h === hour12, a11y: t("picker.hourLabel", { n: h }) }))}
         onPick={(h) => set({ hour: from12Hour(h, pm) })}
       />
 
       <AppText variant="caption" color="secondary" style={styles.label}>
-        Minute
+        {t("picker.minute")}
       </AppText>
       <Grid
-        items={MINUTES.map((m) => ({ key: m, text: String(m).padStart(2, "0"), selected: m === minute, a11y: `${m} minutes` }))}
+        items={MINUTES.map((m) => ({ key: m, text: String(m).padStart(2, "0"), selected: m === minute, a11y: t("picker.minuteLabel", { n: m }) }))}
         onPick={(m) => set({ minute: m })}
       />
 
@@ -64,9 +66,9 @@ export function TimePanel({ hour, minute, onChange }: TimePanelProps) {
         {([false, true] as const).map((isPm) => (
           <Cell
             key={String(isPm)}
-            text={isPm ? "PM" : "AM"}
+            text={isPm ? t("picker.pm") : t("picker.am")}
             selected={pm === isPm}
-            a11y={isPm ? "PM" : "AM"}
+            a11y={isPm ? t("picker.pm") : t("picker.am")}
             onPress={() => set({ hour: from12Hour(hour12, isPm) })}
             style={{ flex: 1 }}
           />
@@ -132,7 +134,7 @@ function Nudge({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap;
 
 const styles = StyleSheet.create({
   readout: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
-  label: { marginBottom: 6, marginTop: 4, marginLeft: 2 },
+  label: { marginBottom: 6, marginTop: 4, marginStart: 2 },
   grid: { gap: 6, marginBottom: 8 },
   gridRow: { flexDirection: "row", gap: 6 },
   cell: { minHeight: 44, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },

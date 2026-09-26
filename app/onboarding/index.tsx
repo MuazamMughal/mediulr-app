@@ -7,15 +7,17 @@ import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
 import { AppButton } from "../../src/components/AppButton";
 import { AppLogo } from "../../src/components/AppLogo";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 
 const THEMES = [
-  { icon: "medkit-outline" as const, label: "Medications, on schedule" },
-  { icon: "medical-outline" as const, label: "Doctor visits, remembered" },
-  { icon: "calendar-outline" as const, label: "One calendar for it all" },
+  { icon: "medkit-outline" as const, key: "onboarding.theme1" as const },
+  { icon: "medical-outline" as const, key: "onboarding.theme2" as const },
+  { icon: "calendar-outline" as const, key: "onboarding.theme3" as const },
 ];
 
 export default function OnboardingScreen() {
   const theme = useTheme();
+  const { t } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -27,34 +29,34 @@ export default function OnboardingScreen() {
         </Animated.View>
         <Animated.View entering={FadeInDown.duration(500).delay(80).springify().damping(16)}>
           <AppText variant="display" style={styles.title}>
-            Welcome to Mediulr
+            {t("onboarding.welcome")}
           </AppText>
           <AppText variant="body" color="secondary" style={styles.subtitle}>
-            Mediulr helps you remember what matters.
+            {t("onboarding.tagline")}
           </AppText>
         </Animated.View>
 
         <View style={styles.themes}>
-          {THEMES.map((t, i) => (
+          {THEMES.map((item, i) => (
             <Animated.View
-              key={t.label}
+              key={item.key}
               entering={FadeInDown.duration(450).delay(180 + i * 90).springify().damping(16)}
               style={styles.themeRow}
             >
               <View style={[styles.themeIcon, { backgroundColor: theme.colors.surfaceSunken }]}>
-                <Ionicons name={t.icon} size={18} color={theme.colors.accent} />
+                <Ionicons name={item.icon} size={18} color={theme.colors.accent} />
               </View>
-              <AppText variant="bodyMedium">{t.label}</AppText>
+              <AppText variant="bodyMedium">{t(item.key)}</AppText>
             </Animated.View>
           ))}
         </View>
       </View>
 
       <Animated.View entering={FadeInUp.duration(450).delay(400)}>
-        <AppButton label="Add your first medication" onPress={() => router.replace("/medication/new")} />
+        <AppButton label={t("onboarding.addFirst")} onPress={() => router.replace("/medication/new")} />
         <Pressable style={styles.skip} onPress={() => router.replace("/(tabs)")}>
           <AppText variant="bodySmall" color="tertiary">
-            Skip for now
+            {t("onboarding.skip")}
           </AppText>
         </Pressable>
       </Animated.View>

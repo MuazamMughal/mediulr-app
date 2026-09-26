@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Alert, AppState } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { doseOutbox } from "./doseOutbox";
+import { getI18n } from "../../i18n";
 import { flushDoseOutbox, onDoseSaved, onDoseSync } from "./submitDose";
 import { patchSavedDose } from "./overlay";
 import type { CalendarEvent } from "../../types/domain";
@@ -27,10 +28,8 @@ export function useDoseSync() {
       queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
       queryClient.invalidateQueries({ queryKey: ["medications"] });
       if (result.dropped.length > 0) {
-        Alert.alert(
-          "Some answers couldn't be saved",
-          "A medication they belong to may have been removed, so those doses were left out."
-        );
+        const { t } = getI18n();
+        Alert.alert(t("sync.droppedTitle"), t("sync.droppedBody"));
       }
     });
     const run = () => {

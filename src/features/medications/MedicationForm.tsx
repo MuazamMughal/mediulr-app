@@ -18,8 +18,7 @@ import type { Medication } from "../../types/domain";
 import { requestNotificationPermission } from "../notifications/scheduleNotifications";
 import { defaultRefillThreshold } from "./refill";
 import { describeCourse } from "./describeCourse";
-
-const FREQUENCY_LABELS = ["Once a day", "Twice a day", "3× daily", "4× daily"];
+import { useI18n } from "../../i18n/LocaleProvider";
 
 const DEFAULT_TIMES: Record<number, string[]> = {
   1: ["09:00"],
@@ -29,27 +28,23 @@ const DEFAULT_TIMES: Record<number, string[]> = {
 };
 
 // Treatment length: `null` = ongoing (no end date), "custom" = the user types a number of days.
-const DURATION_OPTIONS: { label: string; days: number | null | "custom" | "keep" }[] = [
-  { label: "Ongoing", days: null },
-  { label: "3 days", days: 3 },
-  { label: "5 days", days: 5 },
-  { label: "7 days", days: 7 },
-  { label: "10 days", days: 10 },
-  { label: "14 days", days: 14 },
-  { label: "30 days", days: 30 },
-  { label: "Custom", days: "custom" },
+const DURATION_OPTIONS: { days: number | null | "custom" | "keep" }[] = [
+  { days: null },
+  { days: 3 },
+  { days: 5 },
+  { days: 7 },
+  { days: 10 },
+  { days: 14 },
+  { days: 30 },
+  { days: "custom" },
 ];
 const MAX_COURSE_DAYS = 365;
-const KEEP_OPTION = { label: "Keep current", days: "keep" as const };
+const KEEP_OPTION = { days: "keep" as const };
 
 type Props = { mode: "create" } | { mode: "edit"; medication: Medication };
 
 function buildRule(frequencyIndex: number, times: string[]): RecurrenceRule {
   return { type: "times_per_day", count: frequencyIndex + 1, at: times };
-}
-
-function formatDay(dateString: string): string {
-  return parseLocalDate(dateString).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 /**
@@ -61,6 +56,8 @@ export function MedicationForm(props: Props) {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const i18n = useI18n();
+  const { t, tn, fmt } = i18n;
   const { profile } = useActiveProfile();
   const addMedication = useAddMedication();
   const updateMedication = useUpdateMedication();
@@ -86,6 +83,8 @@ export function MedicationForm(props: Props) {
     setTimes(DEFAULT_TIMES[index + 1]);
   }
 
+  const durationLabel = (o: { days: number | null | "custom" | "keep" }) =>
+    o.days === null ? t("meds.duration.ongoing") : o.days === "custom" ? t("meds.duration.custom") : o.days === "keep" ? t("meds.duration.keep") : t("meds.duration.days", { n: o.days });
   const duration = durationOptions[durationIndex];
   const isCustom = duration.days === "custom";
   const keepEnd = duration.days === "keep";
@@ -94,11 +93,11 @@ export function MedicationForm(props: Props) {
   const customDaysNumber = Number(customDays);
   const customDaysError =
     isCustom && customDays !== "" && (!Number.isInteger(customDaysNumber) || customDaysNumber < 1 || customDaysNumber > MAX_COURSE_DAYS)
-      ? `Enter a whole number of days from 1 to ${MAX_COURSE_DAYS}`
+      ? t("meds.form.daysError", { max: MAX_COURSE_DAYS })
       : undefined;
   const quantityNumber = Number(quantityOnHand);
   const quantityError =
-    quantityOnHand !== "" && (!Number.isInteger(quantityNumber) || quantityNumber < 0) ? "Enter a whole number, like 30" : undefined;
+    quantityOnHand !== "" && (!Number.isInteger(quantityNumber) || quantityNumber < 0) ? t("meds.form.quantityError") : undefined;
   const hasDuplicateTimes = new Set(times).size !== times.length;
 
   /** Course length in days, or null when ongoing / while a custom value is still incomplete. */
@@ -175,13 +174,13 @@ export function MedicationForm(props: Props) {
           }
           router.dismiss();
         } catch (err) {
-          Alert.alert("Couldn't save changes", friendlyError(err));
+          Alert.alert(t("meds.form.errSaveChanges"), friendlyError(err));
         }
       };
       if (scheduleChanged) {
-        Alert.alert("Change the schedule?", "The new times start now. Everything already logged stays exactly as it was.", [
-          { text: "Cancel", style: "cancel" },
-          { text: "Change schedule", onPress: finish },
+        Alert.alert(t("meds.form.changeScheduleTitle"), t("meds.form.changeScheduleBody"), [
+          { text: t("common.cancel"), style: "cancel" },
+          { text: t("meds.form.changeScheduleConfirm"), onPress: finish },
         ]);
       } else {
         await finish();
@@ -207,7 +206,7 @@ export function MedicationForm(props: Props) {
 
       router.dismiss();
     } catch (err) {
-      Alert.alert("Couldn't save medication", friendlyError(err));
+      Alert.alert(t("meds.form.errSave"), friendlyError(err));
     }
   }
 
@@ -216,7 +215,7 @@ export function MedicationForm(props: Props) {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <SheetHeader title={editing ? "Edit medication" : "Add medication"} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("meds.form.editTitle") : t("meds.form.addTitle")} onClose={() => router.dismiss()} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
@@ -224,22 +223,22 @@ export function MedicationForm(props: Props) {
       >
         <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
           {editing
-            ? "Changing the times keeps your history and applies from now."
-            : `${profile && !profile.isSelf ? `Adding for ${profile.displayName}. ` : ""}We'll build the reminder schedule for you.`}
+            ? t("meds.form.editHint")
+            : `${profile && !profile.isSelf ? `${t("common.addingFor", { name: profile.displayName })} ` : ""}${t("meds.form.addHint")}`}
         </AppText>
 
         <View style={styles.field}>
-          <AppInput label="Medication name" placeholder="e.g. Amoxicillin" value={name} onChangeText={setName} autoFocus={!editing} />
+          <AppInput label={t("meds.form.name")} placeholder={t("meds.form.namePlaceholder")} value={name} onChangeText={setName} autoFocus={!editing} />
         </View>
 
         <View style={styles.field}>
-          <AppInput label="Dosage" placeholder="e.g. 500mg" value={dosage} onChangeText={setDosage} />
+          <AppInput label={t("meds.form.dosage")} placeholder={t("meds.form.dosagePlaceholder")} value={dosage} onChangeText={setDosage} />
         </View>
 
         <View style={styles.field}>
           <AppInput
-            label="Instructions (optional)"
-            placeholder="e.g. with food"
+            label={t("meds.form.instructions")}
+            placeholder={t("meds.form.instructionsPlaceholder")}
             value={instructions}
             onChangeText={setInstructions}
           />
@@ -249,19 +248,19 @@ export function MedicationForm(props: Props) {
         <>
         <View style={styles.field}>
           <AppText variant="caption" color="secondary" style={styles.label}>
-            How often
+            {t("meds.form.howOften")}
           </AppText>
-          <SegmentedChips options={FREQUENCY_LABELS} selectedIndex={frequencyIndex} onSelect={handleFrequencyChange} />
+          <SegmentedChips options={[1, 2, 3, 4].map((n) => t(`meds.freq.${n}` as "meds.freq.1"))} selectedIndex={frequencyIndex} onSelect={handleFrequencyChange} />
         </View>
 
         <View style={styles.field}>
           <AppText variant="caption" color="secondary" style={styles.label}>
-            Reminder times
+            {t("meds.form.reminderTimes")}
           </AppText>
           <TimeSlotEditor times={times} onChange={setTimes} />
           {hasDuplicateTimes && (
             <AppText variant="caption" color="danger" style={styles.hint}>
-              Two doses are set to the same time — change one.
+              {t("meds.form.duplicateTimes")}
             </AppText>
           )}
         </View>
@@ -271,17 +270,17 @@ export function MedicationForm(props: Props) {
 
         <View style={styles.field}>
           <AppText variant="caption" color="secondary" style={styles.label}>
-            For how long
+            {t("meds.form.forHowLong")}
           </AppText>
-          <SegmentedChips options={durationOptions.map((o) => o.label)} selectedIndex={durationIndex} onSelect={setDurationIndex} />
+          <SegmentedChips options={durationOptions.map(durationLabel)} selectedIndex={durationIndex} onSelect={setDurationIndex} />
           {isCustom && (
             <View style={styles.customDays}>
               <AppInput
-                label="Number of days"
-                placeholder="e.g. 21"
+                label={t("meds.form.numberOfDays")}
+                placeholder={t("meds.form.numberOfDaysPlaceholder")}
                 keyboardType="number-pad"
                 value={customDays}
-                onChangeText={(t) => setCustomDays(t.replace(/[^0-9]/g, ""))}
+                onChangeText={(x) => setCustomDays(x.replace(/[^0-9]/g, ""))}
                 error={customDaysError}
               />
             </View>
@@ -289,34 +288,34 @@ export function MedicationForm(props: Props) {
           <AppText variant="caption" color="tertiary" style={styles.hint}>
             {keepEnd
               ? medication
-                ? `Currently: ${describeCourse(medication).range ?? "ongoing — no end date"}.`
+                ? t("meds.form.currently", { range: describeCourse(medication, new Date(), i18n).range ?? t("course.ongoingLower") })
                 : ""
               : endDate
-              ? `Today through ${formatDay(endDate)} (${courseDays} ${courseDays === 1 ? "day" : "days"}). After that it clears from your calendar and reminders stop.`
+              ? tn("meds.form.throughDate", courseDays ?? 0, { date: fmt.monthDayShort(parseLocalDate(endDate)) })
               : isCustom
-                ? "Enter how many days you'll take it."
-                : "No end date — reminders continue until you stop it."}
+                ? t("meds.form.enterDays")
+                : t("meds.form.noEnd")}
           </AppText>
         </View>
 
         <View style={styles.field}>
           <AppInput
-            label="Quantity on hand (optional)"
-            placeholder={editing ? "How many you have now — e.g. after a refill" : "For refill reminders — e.g. 30"}
+            label={t("meds.form.quantity")}
+            placeholder={editing ? t("meds.form.quantityPlaceholderEdit") : t("meds.form.quantityPlaceholderNew")}
             keyboardType="number-pad"
             value={quantityOnHand}
-            onChangeText={(t) => setQuantityOnHand(t.replace(/[^0-9]/g, ""))}
+            onChangeText={(x) => setQuantityOnHand(x.replace(/[^0-9]/g, ""))}
             error={quantityError}
           />
           <AppText variant="caption" color="tertiary" style={styles.hint}>
-            Mediulr counts it down as you take doses and reminds you to refill about three days before it runs out.
+            {t("meds.form.quantityHint")}
           </AppText>
         </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16, borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
         <AppButton
-          label={editing ? "Save changes" : "Save medication"}
+          label={editing ? t("meds.form.saveChanges") : t("meds.form.save")}
           onPress={handleSave}
           disabled={!canSave}
           loading={addMedication.isPending || updateMedication.isPending || replaceSchedule.isPending}
@@ -331,8 +330,8 @@ const styles = StyleSheet.create({
   content: { padding: 20 },
   subheading: { marginBottom: 24 },
   field: { marginBottom: 20 },
-  label: { marginBottom: 8, marginLeft: 2 },
-  hint: { marginTop: 10, marginLeft: 2, lineHeight: 17 },
+  label: { marginBottom: 8, marginStart: 2 },
+  hint: { marginTop: 10, marginStart: 2, lineHeight: 17 },
   customDays: { marginTop: 14 },
   footer: { padding: 16, borderTopWidth: 1 },
 });

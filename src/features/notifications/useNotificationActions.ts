@@ -63,8 +63,8 @@ async function handleResponse(response: Response): Promise<void> {
   if (action === ACTION.snooze) {
     await scheduleReminder({
       id: `snooze:${data.medicationId}:${new Date(data.scheduledAt).getTime()}:${Date.now()}`,
-      title: `Time for ${data.medicationName}`,
-      body: `Snoozed · ${data.dosage}${data.patientName ? ` · ${data.patientName}` : ""}`,
+      title: getI18n().t("notif.timeFor", { name: data.medicationName }),
+      body: `${getI18n().t("notif.snoozed")} · ${data.dosage}${data.patientName ? ` · ${data.patientName}` : ""}`,
       fireAt: new Date(Date.now() + SNOOZE_MINUTES * 60_000),
       category: "dose",
       data: { kind: "dose", ...data },

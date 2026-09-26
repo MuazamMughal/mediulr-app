@@ -10,6 +10,7 @@ import { useAllMedications, useArchiveMedication, useDeleteMedication } from "..
 import { describeRecurrence, describeRecurrenceTimes } from "../../src/features/medications/describeRecurrence";
 import { describeCourse } from "../../src/features/medications/describeCourse";
 import { refillHeadline, refillStatus } from "../../src/features/medications/refill";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
@@ -26,6 +27,8 @@ function InfoLine({ label, value }: { label: string; value: string }) {
 
 export default function MedicationDetailScreen() {
   const theme = useTheme();
+  const i18n = useI18n();
+  const { t } = i18n;
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { profile } = useActiveProfile();
@@ -39,8 +42,8 @@ export default function MedicationDetailScreen() {
     return <View style={[styles.container, { backgroundColor: theme.colors.background }]} />;
   }
 
-  const times = describeRecurrenceTimes(medication.recurrenceRule);
-  const course = describeCourse(medication);
+  const times = describeRecurrenceTimes(medication.recurrenceRule, i18n);
+  const course = describeCourse(medication, new Date(), i18n);
   const refill = refillStatus(medication);
 
   return (
@@ -61,41 +64,41 @@ export default function MedicationDetailScreen() {
       </View>
 
       <View style={styles.info}>
-        <InfoLine label="FREQUENCY" value={describeRecurrence(medication.recurrenceRule)} />
-        {times && <InfoLine label="REMINDER TIMES" value={times} />}
-        <InfoLine label="TREATMENT" value={course.range ?? "Ongoing — no end date"} />
-        <InfoLine label="INSTRUCTIONS" value={medication.instructions || "None noted"} />
+        <InfoLine label={t("meds.detail.frequency")} value={describeRecurrence(medication.recurrenceRule, i18n)} />
+        {times && <InfoLine label={t("meds.detail.reminderTimes")} value={times} />}
+        <InfoLine label={t("meds.detail.treatment")} value={course.range ?? t("course.ongoingNoEnd")} />
+        <InfoLine label={t("meds.detail.instructions")} value={medication.instructions || t("meds.detail.noneNoted")} />
         {medication.quantityOnHand != null && (
           <InfoLine
-            label="SUPPLY"
-            value={`${medication.quantityOnHand} left${refill?.low ? ` · ${refillHeadline(refill)} — time to refill` : ""}`}
+            label={t("meds.detail.supply")}
+            value={refill?.low ? t("meds.detail.supplyLow", { count: medication.quantityOnHand, headline: refillHeadline(refill, i18n) }) : t("meds.detail.supplyLine", { count: medication.quantityOnHand })}
           />
         )}
       </View>
 
       {course.active && (
         <View style={styles.actions}>
-          <AppButton label="Edit medication" variant="secondary" onPress={() => router.push(`/medication/edit/${medication.id}`)} />
+          <AppButton label={t("meds.detail.edit")} variant="secondary" onPress={() => router.push(`/medication/edit/${medication.id}`)} />
         </View>
       )}
 
       {course.active && (
       <View style={styles.destructive}>
         <AppButton
-          label="Stop this medication"
+          label={t("meds.detail.stop")}
           variant="destructive"
           onPress={() =>
-            Alert.alert("Stop this medication?", "This stops future reminders. Past days stay in your calendar.", [
-              { text: "Cancel", style: "cancel" },
+            Alert.alert(t("meds.detail.stopTitle"), t("meds.detail.stopBody"), [
+              { text: t("common.cancel"), style: "cancel" },
               {
-                text: "Stop",
+                text: t("meds.detail.stopConfirm"),
                 style: "destructive",
                 onPress: async () => {
                   try {
                     await archiveMedication.mutateAsync(medication.id);
                     router.dismiss();
                   } catch (err) {
-                    Alert.alert("Couldn't stop medication", friendlyError(err));
+                    Alert.alert(t("meds.detail.errStop"), friendlyError(err));
                   }
                 },
               },
@@ -107,23 +110,23 @@ export default function MedicationDetailScreen() {
 
       <View style={styles.deleteRow}>
         <AppButton
-          label="Delete medication and its history"
+          label={t("meds.detail.deleteLink")}
           variant="ghost"
           onPress={() =>
             Alert.alert(
-              `Delete ${medication.name}?`,
-              "This permanently removes it and every dose you've logged for it. To keep your history, use Stop instead.",
+              t("meds.detail.deleteTitle", { name: medication.name }),
+              t("meds.detail.deleteBody"),
               [
-                { text: "Cancel", style: "cancel" },
+                { text: t("common.cancel"), style: "cancel" },
                 {
-                  text: "Delete",
+                  text: t("common.delete"),
                   style: "destructive",
                   onPress: async () => {
                     try {
                       await deleteMedication.mutateAsync(medication.id);
                       router.back();
                     } catch (err) {
-                      Alert.alert("Couldn't delete medication", friendlyError(err));
+                      Alert.alert(t("meds.detail.errDelete"), friendlyError(err));
                     }
                   },
                 },

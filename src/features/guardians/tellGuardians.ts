@@ -1,5 +1,6 @@
 import { Alert, Linking, Platform, Share } from "react-native";
 import { buildMissedDoseMessage, smsUrl, type MissedDoseMessageInput } from "./logic";
+import { getI18n } from "../../i18n";
 import type { Guardian } from "../../types/domain";
 
 /**
@@ -8,7 +9,8 @@ import type { Guardian } from "../../types/domain";
  */
 export async function tellGuardians(guardians: Guardian[], message: MissedDoseMessageInput): Promise<void> {
   if (guardians.length === 0) return;
-  const body = buildMissedDoseMessage(message);
+  const i18n = getI18n();
+  const body = buildMissedDoseMessage(message, i18n);
   const url = smsUrl(
     guardians.map((g) => g.phone),
     body,
@@ -20,7 +22,7 @@ export async function tellGuardians(guardians: Guardian[], message: MissedDoseMe
     try {
       await Share.share({ message: body });
     } catch {
-      Alert.alert("Couldn't open messages", "You can tell them yourself:\n\n" + body);
+      Alert.alert(i18n.t("guardians.couldntOpenMessages"), `${i18n.t("guardians.tellYourself")}\n\n${body}`);
     }
   }
 }

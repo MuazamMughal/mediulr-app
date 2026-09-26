@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
+import { useI18n } from "../i18n/LocaleProvider";
 
 /**
  * A sheet's title row — title + close button. The drag handle itself comes from the
@@ -9,6 +10,7 @@ import { AppText } from "./AppText";
  */
 export function SheetHeader({ title, onClose }: { title: string; onClose: () => void }) {
   const theme = useTheme();
+  const { t } = useI18n();
   return (
     <View style={styles.row}>
       <AppText variant="h2">{title}</AppText>
@@ -16,7 +18,7 @@ export function SheetHeader({ title, onClose }: { title: string; onClose: () => 
         onPress={onClose}
         hitSlop={10}
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel={t("common.close")}
         style={[styles.close, { backgroundColor: theme.colors.surfaceSunken }]}
       >
         <Ionicons name="close" size={16} color={theme.colors.textSecondary} />

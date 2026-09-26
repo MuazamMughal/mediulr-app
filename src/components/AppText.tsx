@@ -1,6 +1,7 @@
 import { Text, type TextProps } from "react-native";
 import { useTheme } from "../theme/ThemeProvider";
 import type { TypographyVariant } from "../theme/tokens";
+import { useI18n } from "../i18n/LocaleProvider";
 
 interface AppTextProps extends TextProps {
   variant?: TypographyVariant;
@@ -12,6 +13,7 @@ const weightMap = { regular: "400", medium: "500", semibold: "600", bold: "700" 
 
 export function AppText({ variant = "body", color = "primary", weight, style, ...props }: AppTextProps) {
   const theme = useTheme();
+  const { locale } = useI18n();
   const colorValue =
     color === "primary"
       ? theme.colors.textPrimary
@@ -37,6 +39,8 @@ export function AppText({ variant = "body", color = "primary", weight, style, ..
         { color: colorValue },
         weight ? { fontWeight: weightMap[weight] } : null,
         style,
+        // Letter-spacing splits the joined letters of Arabic-script text apart, so Urdu never gets any.
+        locale === "ur" ? { letterSpacing: 0 } : null,
       ]}
     />
   );

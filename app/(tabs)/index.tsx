@@ -43,11 +43,11 @@ function isToday(d: Date) {
   const t = new Date();
   return d.toDateString() === t.toDateString();
 }
-function greeting(): string {
+function greetingKey(): "home.greetingMorning" | "home.greetingAfternoon" | "home.greetingEvening" {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return "home.greetingMorning";
+  if (hour < 17) return "home.greetingAfternoon";
+  return "home.greetingEvening";
 }
 
 type Row =
@@ -73,7 +73,8 @@ export default function CalendarScreen() {
   const { data: foodEntries, isLoading: foodLoading } = useFoodForRange(profile?.id, rangeStart, rangeEnd);
   const { data: exerciseEntries, isLoading: exerciseLoading } = useExerciseForRange(profile?.id, rangeStart, rangeEnd);
   const monthLogs = useMonthLogs(profile?.id, month);
-  const { t, tn } = useI18n();
+  const i18n = useI18n();
+  const { t, tn, fmt } = i18n;
   // Custom reminders load on their own too, so they can never hide doses or visits.
   const reminderEvents = useReminderEvents(profile?.id, rangeStart, rangeEnd);
   const allReminders = useReminders(profile?.id);
@@ -154,7 +155,7 @@ export default function CalendarScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     }
     // Queue first (the row updates at once), then silence this dose's reminder and follow-ups. Saved now, or as soon as there's signal.
-    submitDose({ medicationId, scheduledAt, status }).catch((err) => Alert.alert("Couldn't update", friendlyError(err)));
+    submitDose({ medicationId, scheduledAt, status }).catch((err) => Alert.alert(t("common.couldntUpdate"), friendlyError(err)));
     cancelDoseReminders(medicationId, scheduledAt);
   }
 
@@ -166,9 +167,9 @@ export default function CalendarScreen() {
 
   const reminderCount = reminderEvents.events?.length ?? 0;
   const daySummary = [
-    totalCount > 0 ? `${totalCount} ${totalCount === 1 ? "dose" : "doses"}` : null,
-    visitCount > 0 ? `${visitCount} doctor ${visitCount === 1 ? "visit" : "visits"}` : null,
-    ...summarizeLogs(foodEntries ?? [], exerciseEntries ?? []),
+    totalCount > 0 ? tn("home.doses", totalCount) : null,
+    visitCount > 0 ? tn("home.visits", visitCount) : null,
+    ...summarizeLogs(foodEntries ?? [], exerciseEntries ?? [], i18n),
     reminderCount > 0 ? tn("reminders.summary", reminderCount) : null,
   ]
     .filter(Boolean)
@@ -199,16 +200,16 @@ export default function CalendarScreen() {
       />
       <View style={styles.dayHeading}>
         <View style={{ flex: 1 }}>
-          <AppText variant="h3">{day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</AppText>
+          <AppText variant="h3">{fmt.dayFull(day)}</AppText>
           <AppText variant="caption" color={dayLoading ? "tertiary" : "secondary"} style={{ marginTop: 2 }}>
-            {dayLoading ? "Loading…" : daySummary || "Nothing scheduled"}
+            {dayLoading ? t("common.loading") : daySummary || t("common.nothingScheduled")}
           </AppText>
         </View>
         {!theme.simple && (
           <>
         <QuickLogButton icon="notifications-outline" label={t("reminders.addOnHome")} tint={theme.colors.reminder} onPress={() => router.push(`/reminder/new?date=${toLocalDateString(day)}`)} />
-        <QuickLogButton icon="restaurant-outline" label="Add food" tint={theme.colors.nutrition} onPress={() => router.push(`/food/new?date=${toLocalDateString(day)}`)} />
-        <QuickLogButton icon="walk-outline" label="Add exercise" tint={theme.colors.exercise} onPress={() => router.push(`/exercise/new?date=${toLocalDateString(day)}`)} />
+        <QuickLogButton icon="restaurant-outline" label={t("home.addFood")} tint={theme.colors.nutrition} onPress={() => router.push(`/food/new?date=${toLocalDateString(day)}`)} />
+        <QuickLogButton icon="walk-outline" label={t("home.addExercise")} tint={theme.colors.exercise} onPress={() => router.push(`/exercise/new?date=${toLocalDateString(day)}`)} />
           </>
         )}
       </View>
@@ -221,23 +222,23 @@ export default function CalendarScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <AppText variant="bodySmall" color="secondary">
-            {today ? greeting() : day.toLocaleDateString(undefined, { weekday: "long" })}
+            {today ? t(greetingKey()) : fmt.weekdayOf(day)}
           </AppText>
           {!isViewingSelf && profile && (
             <Pressable
               onPress={() => router.push("/(tabs)/profile")}
               accessibilityRole="button"
-              accessibilityLabel={`Viewing ${profile.displayName}. Switch profile`}
+              accessibilityLabel={t("home.viewing", { name: profile.displayName })}
               style={[styles.viewingChip, { backgroundColor: theme.colors.accentSoft }]}
             >
               <Ionicons name="people" size={12} color={theme.colors.accent} />
               <AppText variant="metadata" color="accent" weight="semibold">
-                {profile.displayName} · Switch
+                {t("home.viewingSwitch", { name: profile.displayName })}
               </AppText>
             </Pressable>
           )}
           <AppText variant="h1" style={styles.dateTitle}>
-            {today ? "Today" : day.toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+            {today ? t("common.today") : fmt.monthDay(day)}
           </AppText>
         </View>
         {totalCount > 0 && (
@@ -276,8 +277,8 @@ export default function CalendarScreen() {
             ) : (
               <EmptyState
                 icon="sunny-outline"
-                title="A clear day"
-                description="Nothing scheduled for this day. Enjoy the breathing room."
+                title={t("home.clearDay.title")}
+                description={t("home.clearDay.text")}
               />
             )
           }
@@ -324,10 +325,10 @@ export default function CalendarScreen() {
       {!isLoading && !hasNothingYet && (
         <View style={[styles.fabRow, { borderTopColor: theme.colors.border }]}>
           <View style={{ flex: 1 }}>
-            <AppButton label="Medication" size="md" onPress={() => router.push("/medication/new")} />
+            <AppButton label={t("home.buttonMedication")} size="md" onPress={() => router.push("/medication/new")} />
           </View>
           <View style={{ flex: 1 }}>
-            <AppButton label="Doctor visit" variant="secondary" size="md" onPress={() => router.push("/appointment/new")} />
+            <AppButton label={t("home.buttonVisit")} variant="secondary" size="md" onPress={() => router.push("/appointment/new")} />
           </View>
         </View>
       )}

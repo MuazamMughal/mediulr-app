@@ -16,48 +16,25 @@ import { TimelineItem } from "../../src/components/TimelineItem";
 import { endOfLocalDay, startOfLocalDay, toLocalDateString } from "../../src/lib/dates";
 import { isSameDay } from "../../src/lib/dayTime";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 import { useFoodForRange } from "../../src/features/nutrition/useFood";
 import { useExerciseForRange } from "../../src/features/exercise/useExercise";
 import { formatDuration, totalMinutes } from "../../src/features/exercise/logic";
 import type { CalendarEvent } from "../../src/types/domain";
 
 type Section = "food" | "exercise";
-const SECTIONS: { key: Section; label: string }[] = [
-  { key: "food", label: "Food" },
-  { key: "exercise", label: "Exercise" },
-];
+const SECTION_KEYS: Section[] = ["food", "exercise"];
 
 type Row = { key: string; kind: "period"; period: Period } | { key: string; kind: "event"; event: CalendarEvent };
 
-const COPY = {
-  food: {
-    add: "Add food",
-    emptyIcon: "restaurant-outline" as const,
-    todayTitle: "No meals logged yet",
-    todayText: "Log what you eat and when. It takes a few seconds.",
-    todayAction: "Add your first meal",
-    pastTitle: "Nothing logged",
-    pastText: "No meals were logged on this day.",
-    pastAction: "Add a meal",
-    errorTitle: "Couldn't load your meals",
-  },
-  exercise: {
-    add: "Add exercise",
-    emptyIcon: "walk-outline" as const,
-    todayTitle: "No activity logged yet",
-    todayText: "Record a walk, a workout, anything that got you moving.",
-    todayAction: "Add your first activity",
-    pastTitle: "Nothing logged",
-    pastText: "No activity was logged on this day.",
-    pastAction: "Add an activity",
-    errorTitle: "Couldn't load your activity",
-  },
-};
+const EMPTY_ICON = { food: "restaurant-outline", exercise: "walk-outline" } as const;
 
 /** The Food / Exercise tab: one day at a time, easy to step back through. Both live here so the tab bar stays four-plus-one. */
 export default function LifestyleScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const i18n = useI18n();
+  const { t } = i18n;
   const { profile, isViewingSelf } = useActiveProfile();
   const [section, setSection] = useState<Section>("food");
   const [day, setDay] = useState(() => new Date());
@@ -67,7 +44,17 @@ export default function LifestyleScreen() {
   const food = useFoodForRange(profile?.id, rangeStart, rangeEnd);
   const exercise = useExerciseForRange(profile?.id, rangeStart, rangeEnd);
   const active = section === "food" ? food : exercise;
-  const copy = COPY[section];
+  const copy = {
+    add: t(`lifestyle.${section}.add` as "lifestyle.food.add"),
+    emptyIcon: EMPTY_ICON[section],
+    todayTitle: t(`lifestyle.${section}.todayTitle` as "lifestyle.food.todayTitle"),
+    todayText: t(`lifestyle.${section}.todayText` as "lifestyle.food.todayText"),
+    todayAction: t(`lifestyle.${section}.todayAction` as "lifestyle.food.todayAction"),
+    pastTitle: t(`lifestyle.${section}.pastTitle` as "lifestyle.food.pastTitle"),
+    pastText: t(`lifestyle.${section}.pastText` as "lifestyle.food.pastText"),
+    pastAction: t(`lifestyle.${section}.pastAction` as "lifestyle.food.pastAction"),
+    errorTitle: t(`lifestyle.${section}.errorTitle` as "lifestyle.food.errorTitle"),
+  };
   const isToday = isSameDay(day, new Date());
 
   const events = useMemo<CalendarEvent[]>(() => {
@@ -92,10 +79,10 @@ export default function LifestyleScreen() {
   const summary =
     section === "food"
       ? events.length > 0
-        ? `${events.length} ${events.length === 1 ? "meal" : "meals"}`
+        ? i18n.tn("lifestyle.meals", events.length)
         : null
       : exercise.data && exercise.data.length > 0
-        ? `${formatDuration(totalMinutes(exercise.data))} · ${exercise.data.length} ${exercise.data.length === 1 ? "activity" : "activities"}`
+        ? `${formatDuration(totalMinutes(exercise.data), i18n)} · ${i18n.tn("lifestyle.activities", exercise.data.length)}`
         : null;
 
   function openEntry(event: CalendarEvent) {
@@ -109,26 +96,26 @@ export default function LifestyleScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top"]}>
       <View style={styles.header}>
-        <AppText variant="h1">Daily log</AppText>
+        <AppText variant="h1">{t("lifestyle.title")}</AppText>
         {!isViewingSelf && profile && (
           <AppText variant="bodySmall" color="secondary" style={{ marginTop: 2 }}>
-            For {profile.displayName}
+            {t("common.forName", { name: profile.displayName })}
           </AppText>
         )}
       </View>
 
       <View style={styles.switcher}>
         <SegmentedChips
-          options={SECTIONS.map((s) => s.label)}
-          selectedIndex={SECTIONS.findIndex((s) => s.key === section)}
-          onSelect={(i) => setSection(SECTIONS[i].key)}
+          options={SECTION_KEYS.map((k) => t(`lifestyle.section.${k}` as "lifestyle.section.food"))}
+          selectedIndex={SECTION_KEYS.indexOf(section)}
+          onSelect={(i) => setSection(SECTION_KEYS[i])}
         />
       </View>
 
       <DayNavigator day={day} onChange={setDay} />
       <View style={styles.summary}>
         <AppText variant="caption" color={summary ? "secondary" : "tertiary"}>
-          {isLoading ? "Loading…" : (summary ?? " ")}
+          {isLoading ? t("common.loading") : (summary ?? " ")}
         </AppText>
       </View>
 
@@ -144,8 +131,8 @@ export default function LifestyleScreen() {
         <EmptyState
           icon="cloud-offline-outline"
           title={copy.errorTitle}
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          description={t("common.checkConnection")}
+          actionLabel={t("common.tryAgain")}
           onAction={() => active.refetch()}
         />
       )}

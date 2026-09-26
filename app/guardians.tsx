@@ -9,11 +9,14 @@ import { EmptyState } from "../src/components/EmptyState";
 import { SkeletonRow } from "../src/components/Skeleton";
 import { useActiveProfile } from "../src/features/profile/ActiveProfile";
 import { useGuardians } from "../src/features/guardians/useGuardians";
-import { MAX_GUARDIANS } from "../src/features/guardians/logic";
+import { MAX_GUARDIANS, relationshipLabel } from "../src/features/guardians/logic";
+import { useI18n } from "../src/i18n/LocaleProvider";
 
 export default function GuardiansScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const i18n = useI18n();
+  const { t } = i18n;
   const { profile, isViewingSelf } = useActiveProfile();
   const { data: guardians, isLoading: queryLoading, isError, refetch } = useGuardians(profile?.id);
   const isLoading = !profile || queryLoading;
@@ -31,9 +34,9 @@ export default function GuardiansScreen() {
       {!isLoading && isError && (
         <EmptyState
           icon="cloud-offline-outline"
-          title="Couldn't load guardians"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t("guardians.screen.errLoad")}
+          description={t("common.checkConnection")}
+          actionLabel={t("common.tryAgain")}
           onAction={() => refetch()}
         />
       )}
@@ -41,9 +44,9 @@ export default function GuardiansScreen() {
       {!isLoading && !isError && count === 0 && (
         <EmptyState
           icon="shield-checkmark-outline"
-          title="No guardians yet"
-          description="Add someone you trust. When you miss a dose, one tap opens a message to them. You choose whether to send it."
-          actionLabel="Add a guardian"
+          title={t("guardians.screen.emptyTitle")}
+          description={t("guardians.screen.emptyText")}
+          actionLabel={t("guardians.screen.emptyAction")}
           onAction={() => router.push("/guardian/new")}
         />
       )}
@@ -55,14 +58,14 @@ export default function GuardiansScreen() {
             keyExtractor={(g) => g.id}
             ListHeaderComponent={
               <AppText variant="bodySmall" color="secondary" style={styles.intro}>
-                {isViewingSelf ? "People you trust to be told when you miss a dose." : `People who can be told when ${profile?.displayName} misses a dose.`}
+                {isViewingSelf ? t("guardians.screen.introSelf") : t("guardians.screen.introOther", { name: profile?.displayName ?? "" })}
               </AppText>
             }
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => router.push(`/guardian/${item.id}`)}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.name}${item.relationship ? `, ${item.relationship}` : ""}. Edit`}
+                accessibilityLabel={t("guardians.screen.editA11y", { name: item.name, relationship: item.relationship ? `, ${relationshipLabel(item.relationship, i18n)}` : "" })}
                 style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
               >
                 <View style={[styles.avatar, { backgroundColor: theme.colors.accentSoft }]}>
@@ -75,7 +78,7 @@ export default function GuardiansScreen() {
                     {item.name}
                   </AppText>
                   <AppText variant="caption" color="tertiary" style={{ marginTop: 2 }}>
-                    {item.relationship ? `${item.relationship} · ` : ""}
+                    {item.relationship ? `${relationshipLabel(item.relationship, i18n)} · ` : ""}
                     {item.phone}
                   </AppText>
                 </View>
@@ -83,19 +86,19 @@ export default function GuardiansScreen() {
                   name={item.notifyOnMissed ? "notifications" : "notifications-off-outline"}
                   size={16}
                   color={item.notifyOnMissed ? theme.colors.accent : theme.colors.textTertiary}
-                  accessibilityLabel={item.notifyOnMissed ? "Offered on missed doses" : "Not offered on missed doses"}
+                  accessibilityLabel={item.notifyOnMissed ? t("guardians.screen.offered") : t("guardians.screen.notOffered")}
                 />
               </Pressable>
             )}
             ListFooterComponent={
               <AppText variant="caption" color="tertiary" style={styles.privacy}>
-                Mediulr never contacts your guardians on its own. Tapping "Tell" on a missed dose opens your messaging app with a short note, and nothing is sent until you press Send.
+                {t("guardians.screen.privacy")}
               </AppText>
             }
           />
           {count < MAX_GUARDIANS && (
             <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
-              <AppButton label="+ Add guardian" onPress={() => router.push("/guardian/new")} />
+              <AppButton label={`+ ${t("guardians.screen.add")}`} onPress={() => router.push("/guardian/new")} />
             </View>
           )}
         </>

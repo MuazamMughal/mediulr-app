@@ -48,11 +48,14 @@ export const typography = {
 /** Simple mode: every text style scaled up, keeping the same proportions. */
 export const SIMPLE_MODE_TEXT_SCALE = 1.25;
 
-export function scaleTypography(scale: number): typeof typography {
-  if (scale === 1) return typography;
+/** Urdu glyphs are taller (with marks above and below the line), so its lines get more room. */
+export const URDU_LINE_HEIGHT_SCALE = 1.22;
+
+export function scaleTypography(scale: number, lineHeightScale = 1): typeof typography {
+  if (scale === 1 && lineHeightScale === 1) return typography;
   const scaled = {} as Record<string, unknown>;
   for (const [name, style] of Object.entries(typography)) {
-    scaled[name] = { ...style, fontSize: Math.round(style.fontSize * scale), lineHeight: Math.round(style.lineHeight * scale) };
+    scaled[name] = { ...style, fontSize: Math.round(style.fontSize * scale), lineHeight: Math.round(style.lineHeight * scale * lineHeightScale) };
   }
   return scaled as typeof typography;
 }

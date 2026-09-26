@@ -1,8 +1,9 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { useColorScheme } from "react-native";
 import { palettes, type ColorScheme, type Colors } from "./colors";
-import { radius, shadow, spacing, typography, motion, scaleTypography, SIMPLE_MODE_TEXT_SCALE } from "./tokens";
+import { radius, shadow, spacing, typography, motion, scaleTypography, SIMPLE_MODE_TEXT_SCALE, URDU_LINE_HEIGHT_SCALE } from "./tokens";
 import { usePreferences } from "../features/preferences/Preferences";
+import { useI18n } from "../i18n/LocaleProvider";
 
 interface Theme {
   scheme: ColorScheme;
@@ -22,6 +23,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
   const scheme: ColorScheme = systemScheme === "dark" ? "dark" : "light";
   const simple = usePreferences().prefs.simpleMode;
+  const { locale } = useI18n();
 
   const theme = useMemo<Theme>(
     () => ({
@@ -30,11 +32,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       spacing,
       radius,
       shadow,
-      typography: scaleTypography(simple ? SIMPLE_MODE_TEXT_SCALE : 1),
+      typography: scaleTypography(simple ? SIMPLE_MODE_TEXT_SCALE : 1, locale === "ur" ? URDU_LINE_HEIGHT_SCALE : 1),
       motion,
       simple,
     }),
-    [scheme, simple]
+    [scheme, simple, locale]
   );
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;

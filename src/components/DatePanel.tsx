@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { toDateId, useCalendar } from "@marceloterreiro/flash-calendar";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
+import { useI18n } from "../i18n/LocaleProvider";
 
 interface DatePanelProps {
   value: Date;
@@ -14,13 +15,13 @@ interface DatePanelProps {
 /** A plain month grid for choosing a date: tap a day, done. Same look and behaviour on every phone, no system dialog. */
 export function DatePanel({ value, onChange }: DatePanelProps) {
   const theme = useTheme();
+  const { t, fmt, isRTL } = useI18n();
   const [month, setMonth] = useState(value);
   const selectedId = toDateId(value);
 
-  const { weeksList, weekDaysList, calendarRowMonth } = useCalendar({
+  const { weeksList } = useCalendar({
     calendarMonthId: toDateId(month),
     calendarFirstDayOfWeek: "monday",
-    getCalendarWeekDayFormat: (date, locale) => date.toLocaleDateString(locale, { weekday: "narrow" }),
     calendarFormatLocale: undefined,
   });
 
@@ -32,17 +33,17 @@ export function DatePanel({ value, onChange }: DatePanelProps) {
     <View>
       <View style={styles.header}>
         <AppText variant="h3" style={{ flex: 1 }}>
-          {calendarRowMonth}
+          {fmt.monthYear(month)}
         </AppText>
-        <Nav icon="chevron-back" label="Previous month" onPress={() => step(-1)} />
-        <Nav icon="chevron-forward" label="Next month" onPress={() => step(1)} />
+        <Nav icon={isRTL ? "chevron-forward" : "chevron-back"} label={t("picker.previousMonth")} onPress={() => step(-1)} />
+        <Nav icon={isRTL ? "chevron-back" : "chevron-forward"} label={t("picker.nextMonth")} onPress={() => step(1)} />
       </View>
 
       <View style={styles.row}>
-        {weekDaysList.map((label, i) => (
-          <View key={`${label}-${i}`} style={styles.weekday}>
+        {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => (
+          <View key={dayIndex} style={styles.weekday}>
             <AppText variant="metadata" color="tertiary" weight="semibold">
-              {label}
+              {fmt.weekdayName(dayIndex, "narrow")}
             </AppText>
           </View>
         ))}
@@ -60,7 +61,7 @@ export function DatePanel({ value, onChange }: DatePanelProps) {
                   onChange(meta.date);
                 }}
                 accessibilityRole="button"
-                accessibilityLabel={meta.date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                accessibilityLabel={fmt.dateFull(meta.date)}
                 accessibilityState={{ selected }}
                 style={styles.cell}
               >

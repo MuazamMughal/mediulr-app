@@ -6,7 +6,8 @@ import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { DatePanel } from "./DatePanel";
 import { TimePanel } from "./TimePanel";
-import { formatTimeParts, withCalendarDay, withClockTime } from "../lib/timeParts";
+import { withCalendarDay, withClockTime } from "../lib/timeParts";
+import { useI18n } from "../i18n/LocaleProvider";
 
 interface DateTimeFieldProps {
   label?: string;
@@ -24,8 +25,10 @@ type Open = "date" | "time" | null;
  * Date and time as two always-visible buttons; tapping one opens its picker right underneath (inline, in the page —
  * never a system dialog), and tapping it again or "Done" closes it. Choosing a date closes it straight away.
  */
-export function DateTimeField({ label = "When", value, onChange, tint, mode = "datetime" }: DateTimeFieldProps) {
+export function DateTimeField({ label, value, onChange, tint, mode = "datetime" }: DateTimeFieldProps) {
   const theme = useTheme();
+  const { t, fmt } = useI18n();
+  const clock = fmt.clock({ hour: value.getHours(), minute: value.getMinutes() });
   const [open, setOpen] = useState<Open>(null);
   const iconColor = tint ?? theme.colors.accent;
 
@@ -34,13 +37,13 @@ export function DateTimeField({ label = "When", value, onChange, tint, mode = "d
   return (
     <View>
       <AppText variant="caption" color="secondary" style={styles.label}>
-        {label}
+        {label ?? t("picker.when")}
       </AppText>
       <View style={styles.row}>
         <Pill
           icon="calendar-outline"
-          text={value.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-          a11y={`Date, ${value.toLocaleDateString(undefined, { dateStyle: "full" })}. Change`}
+          text={fmt.dateMedium(value)}
+          a11y={t("picker.dateButton", { date: fmt.dateFull(value) })}
           active={open === "date"}
           tint={iconColor}
           onPress={() => toggle("date")}
@@ -48,8 +51,8 @@ export function DateTimeField({ label = "When", value, onChange, tint, mode = "d
         {mode === "datetime" && (
         <Pill
           icon="time-outline"
-          text={formatTimeParts({ hour: value.getHours(), minute: value.getMinutes() })}
-          a11y={`Time, ${formatTimeParts({ hour: value.getHours(), minute: value.getMinutes() })}. Change`}
+          text={clock}
+          a11y={t("picker.timeButton", { time: clock })}
           active={open === "time"}
           tint={iconColor}
           onPress={() => toggle("time")}
@@ -72,9 +75,9 @@ export function DateTimeField({ label = "When", value, onChange, tint, mode = "d
       {open === "time" && (
         <Animated.View entering={FadeIn.duration(150)} style={[styles.panel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <TimePanel hour={value.getHours()} minute={value.getMinutes()} onChange={(hour, minute) => onChange(withClockTime(value, { hour, minute }))} />
-          <Pressable onPress={() => setOpen(null)} accessibilityRole="button" accessibilityLabel="Done choosing time" style={styles.done}>
+          <Pressable onPress={() => setOpen(null)} accessibilityRole="button" accessibilityLabel={t("picker.doneChoosingTime")} style={styles.done}>
             <AppText variant="bodyMedium" color="accent" weight="semibold">
-              Done
+              {t("common.done")}
             </AppText>
           </Pressable>
         </Animated.View>
@@ -104,7 +107,7 @@ function Pill({ icon, text, a11y, active, tint, onPress }: { icon: keyof typeof 
 }
 
 const styles = StyleSheet.create({
-  label: { marginBottom: 8, marginLeft: 2 },
+  label: { marginBottom: 8, marginStart: 2 },
   row: { flexDirection: "row", gap: 10 },
   pill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 52, borderWidth: 1.5, borderRadius: 14, borderCurve: "continuous", paddingHorizontal: 12 },
   panel: { marginTop: 10, borderWidth: 1.5, borderRadius: 14, borderCurve: "continuous", padding: 12 },

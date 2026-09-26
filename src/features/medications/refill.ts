@@ -1,6 +1,7 @@
 import { endOfLocalDay, parseLocalDate } from "../../lib/dates";
 import { occurrencesInRange, type RecurrenceRule } from "../../lib/recurrence";
 import { isActiveMedication } from "./schedule";
+import { getI18n, type I18n } from "../../i18n";
 import type { Medication } from "../../types/domain";
 
 /** Average doses per day for a schedule (weekly and interval schedules average out). */
@@ -54,9 +55,9 @@ export function refillStatus(med: Medication, now: Date = new Date()): RefillSta
 }
 
 /** "Out — refill needed" / "About 2 days left" style wording for a low supply. */
-export function refillHeadline(status: RefillStatus): string {
-  if (status.empty) return "Out — refill needed";
-  if (status.daysLeft === 0) return "Less than a day left";
-  if (status.daysLeft != null) return `About ${status.daysLeft} ${status.daysLeft === 1 ? "day" : "days"} left`;
-  return `${status.remaining} left`;
+export function refillHeadline(status: RefillStatus, { t, tn }: I18n = getI18n()): string {
+  if (status.empty) return t("refill.outNeedsRefill");
+  if (status.daysLeft === 0) return t("refill.lessThanDay");
+  if (status.daysLeft != null) return tn("refill.daysLeft", status.daysLeft);
+  return t("refill.leftCount", { count: status.remaining });
 }

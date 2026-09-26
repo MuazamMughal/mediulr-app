@@ -12,7 +12,8 @@ import { SegmentedChips } from "../../components/SegmentedChips";
 import { DateTimeField } from "../../components/DateTimeField";
 import { friendlyError } from "../../lib/friendlyError";
 import { useActiveProfile } from "../profile/ActiveProfile";
-import { DURATION_PRESETS, EXERCISE_TYPES, INTENSITIES } from "./constants";
+import { useI18n } from "../../i18n/LocaleProvider";
+import { DURATION_PRESETS, EXERCISE_TYPES, INTENSITIES, exerciseTypeLabel, intensityLabel } from "./constants";
 import { MAX_EXERCISE_MINUTES, formatDuration, parseCustomMinutes } from "./logic";
 import { useAddExercise, useDeleteExercise, useUpdateExercise } from "./useExercise";
 import type { ExerciseEntry, ExerciseType, Intensity } from "../../types/domain";
@@ -35,6 +36,8 @@ export function ExerciseForm(props: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useActiveProfile();
+  const i18n = useI18n();
+  const { t } = i18n;
   const editing = props.mode === "edit";
   const entry = props.mode === "edit" ? props.entry : null;
 
@@ -86,59 +89,59 @@ export function ExerciseForm(props: Props) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       router.dismiss();
     } catch (err) {
-      Alert.alert(entry ? "Couldn't update activity" : "Couldn't save activity", friendlyError(err));
+      Alert.alert(entry ? t("exercise.form.errUpdate") : t("exercise.form.errSave"), friendlyError(err));
     }
   }
 
   function handleDelete() {
     if (!entry) return;
-    Alert.alert("Delete this activity?", "It will be removed from your day and your calendar.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("exercise.form.deleteTitle"), t("exercise.form.deleteBody"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: () =>
           deleteExercise.mutate(entry.id, {
             onSuccess: () => router.dismiss(),
-            onError: (err) => Alert.alert("Couldn't delete activity", friendlyError(err)),
+            onError: (err) => Alert.alert(t("exercise.form.errDelete"), friendlyError(err)),
           }),
       },
     ]);
   }
 
-  const durationOptions = [...DURATION_PRESETS.map(formatDuration), "Custom"];
+  const durationOptions = [...DURATION_PRESETS.map((m) => formatDuration(m, i18n)), t("exercise.form.custom")];
   const durationIndex = duration === CUSTOM ? DURATION_PRESETS.length : DURATION_PRESETS.indexOf(duration);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <SheetHeader title={editing ? "Edit activity" : "Add exercise"} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("exercise.form.editTitle") : t("exercise.form.addTitle")} onClose={() => router.dismiss()} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         {!editing && profile && !profile.isSelf && (
           <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
-            Adding for {profile.displayName}.
+            {t("common.addingFor", { name: profile.displayName })}
           </AppText>
         )}
 
         <View style={styles.field}>
           <AppText variant="caption" color="secondary" style={styles.label}>
-            What did you do?
+            {t("exercise.form.what")}
           </AppText>
           <SegmentedChips
-            options={EXERCISE_TYPES.map((t) => t.label)}
-            selectedIndex={EXERCISE_TYPES.findIndex((t) => t.value === type)}
+            options={EXERCISE_TYPES.map((x) => exerciseTypeLabel(x.value, i18n))}
+            selectedIndex={EXERCISE_TYPES.findIndex((x) => x.value === type)}
             onSelect={(i) => setType(EXERCISE_TYPES[i].value)}
           />
         </View>
 
         {needsName && (
           <View style={styles.field}>
-            <AppInput label="Activity name" placeholder="e.g. Badminton, Dance class" value={customName} onChangeText={setCustomName} maxLength={120} autoFocus={!editing} />
+            <AppInput label={t("exercise.form.activityName")} placeholder={t("exercise.form.activityNamePlaceholder")} value={customName} onChangeText={setCustomName} maxLength={120} autoFocus={!editing} />
           </View>
         )}
 
         <View style={styles.field}>
           <AppText variant="caption" color="secondary" style={styles.label}>
-            How long?
+            {t("exercise.form.howLong")}
           </AppText>
           <SegmentedChips
             options={durationOptions}
@@ -148,28 +151,28 @@ export function ExerciseForm(props: Props) {
           {duration === CUSTOM && (
             <View style={{ marginTop: 12 }}>
               <AppInput
-                label="Minutes"
-                placeholder="e.g. 50"
+                label={t("exercise.form.minutes")}
+                placeholder={t("exercise.form.minutesPlaceholder")}
                 value={customMinutes}
-                onChangeText={(t) => setCustomMinutes(t.replace(/[^0-9]/g, ""))}
+                onChangeText={(x) => setCustomMinutes(x.replace(/[^0-9]/g, ""))}
                 keyboardType="number-pad"
                 maxLength={4}
-                error={customMinutes.length > 0 && !minutesValid ? `Enter 1 to ${MAX_EXERCISE_MINUTES} minutes` : undefined}
+                error={customMinutes.length > 0 && !minutesValid ? t("exercise.form.minutesError", { max: MAX_EXERCISE_MINUTES }) : undefined}
               />
             </View>
           )}
         </View>
 
         <View style={styles.field}>
-          <DateTimeField label="Started" value={when} onChange={setWhen} tint={theme.colors.exercise} />
+          <DateTimeField label={t("exercise.form.started")} value={when} onChange={setWhen} tint={theme.colors.exercise} />
         </View>
 
         <View style={styles.field}>
           <AppText variant="caption" color="secondary" style={styles.label}>
-            How did it feel? (optional)
+            {t("exercise.form.feel")}
           </AppText>
           <SegmentedChips
-            options={INTENSITIES.map((i) => i.label)}
+            options={INTENSITIES.map((x) => intensityLabel(x.value, i18n))}
             selectedIndex={INTENSITIES.findIndex((i) => i.value === intensity)}
             onSelect={(i) => setIntensity((cur) => (cur === INTENSITIES[i].value ? null : INTENSITIES[i].value))}
           />
@@ -177,8 +180,8 @@ export function ExerciseForm(props: Props) {
 
         <View style={styles.field}>
           <AppInput
-            label="Notes (optional)"
-            placeholder="e.g. Evening walk around the park"
+            label={t("exercise.form.notes")}
+            placeholder={t("exercise.form.notesPlaceholder")}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -189,13 +192,13 @@ export function ExerciseForm(props: Props) {
 
         {editing && (
           <View style={styles.destructive}>
-            <AppButton label="Delete activity" variant="destructive" onPress={handleDelete} loading={deleteExercise.isPending} />
+            <AppButton label={t("exercise.form.delete")} variant="destructive" onPress={handleDelete} loading={deleteExercise.isPending} />
           </View>
         )}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16, borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-        <AppButton label={editing ? "Save changes" : "Save activity"} onPress={handleSave} disabled={!canSave} loading={saving} />
+        <AppButton label={editing ? t("common.saveChanges") : t("exercise.form.save")} onPress={handleSave} disabled={!canSave} loading={saving} />
       </View>
     </KeyboardAvoidingView>
   );
@@ -205,7 +208,7 @@ const styles = StyleSheet.create({
   content: { padding: 20 },
   subheading: { marginBottom: 20 },
   field: { marginBottom: 18 },
-  label: { marginBottom: 8, marginLeft: 2 },
+  label: { marginBottom: 8, marginStart: 2 },
   multiline: { minHeight: 90, textAlignVertical: "top" },
   destructive: { marginTop: 10 },
   footer: { padding: 16, borderTopWidth: 1 },

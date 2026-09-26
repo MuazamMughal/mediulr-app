@@ -7,11 +7,13 @@ import { AppText } from "../src/components/AppText";
 import { AppInput } from "../src/components/AppInput";
 import { AppButton } from "../src/components/AppButton";
 import { AppLogo } from "../src/components/AppLogo";
+import { useI18n } from "../src/i18n/LocaleProvider";
 import { friendlyError } from "../src/lib/friendlyError";
 import { supabase } from "../src/lib/supabase";
 
 export default function LoginScreen() {
   const theme = useTheme();
+  const { t } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
@@ -35,14 +37,14 @@ export default function LoginScreen() {
         if (error) throw error;
         // With email confirmation switched on in Supabase there's no session yet — don't walk into an app that can't load anything.
         if (!data.session) {
-          Alert.alert("Check your email", "We sent you a confirmation link. Confirm your email, then sign in.");
+          Alert.alert(t("auth.checkEmailTitle"), t("auth.checkEmailBody"));
           setMode("signIn");
           return;
         }
       }
       router.replace(mode === "signUp" ? "/onboarding" : "/(tabs)");
     } catch (err) {
-      Alert.alert("Couldn't sign in", friendlyError(err));
+      Alert.alert(t("auth.errSignIn"), friendlyError(err));
     } finally {
       setLoading(false);
     }
@@ -62,12 +64,12 @@ export default function LoginScreen() {
           Mediulr
         </AppText>
         <AppText variant="body" color="secondary" style={styles.subtitle}>
-          Your medications, doctor visits, and calendar — in one calm place.
+          {t("auth.subtitle")}
         </AppText>
 
         <View style={styles.field}>
           <AppInput
-            label="Email"
+            label={t("auth.email")}
             placeholder="you@example.com"
             autoCapitalize="none"
             autoComplete="email"
@@ -78,8 +80,8 @@ export default function LoginScreen() {
         </View>
         <View style={styles.field}>
           <AppInput
-            label="Password"
-            placeholder="At least 6 characters"
+            label={t("auth.password")}
+            placeholder={t("auth.passwordPlaceholder")}
             secureTextEntry={!showPassword}
             autoComplete="password"
             value={password}
@@ -87,14 +89,14 @@ export default function LoginScreen() {
           />
           <Pressable onPress={() => setShowPassword((s) => !s)} style={styles.showPassword} hitSlop={8}>
             <AppText variant="caption" color="accent">
-              {showPassword ? "Hide password" : "Show password"}
+              {showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             </AppText>
           </Pressable>
         </View>
 
         <View style={styles.submitButton}>
           <AppButton
-            label={mode === "signIn" ? "Sign in" : "Create account"}
+            label={mode === "signIn" ? t("auth.signIn") : t("auth.createAccount")}
             onPress={handleSubmit}
             disabled={!canSubmit}
             loading={loading}
@@ -103,9 +105,9 @@ export default function LoginScreen() {
 
         <Pressable onPress={() => setMode((m) => (m === "signIn" ? "signUp" : "signIn"))} style={styles.switchLink}>
           <AppText variant="bodySmall" color="secondary">
-            {mode === "signIn" ? "New here? " : "Already have an account? "}
+            {mode === "signIn" ? t("auth.newHere") : t("auth.haveAccount")}
             <AppText variant="bodySmall" color="accent" weight="semibold">
-              {mode === "signIn" ? "Create an account" : "Sign in"}
+              {mode === "signIn" ? t("auth.createAnAccount") : t("auth.signIn")}
             </AppText>
           </AppText>
         </Pressable>

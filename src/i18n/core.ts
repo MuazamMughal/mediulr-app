@@ -72,6 +72,7 @@ export interface Format {
   dayShort: (d: Date) => string; // "Tue, Sep 22"
   monthDay: (d: Date) => string; // "September 26"
   monthDayShort: (d: Date) => string; // "Sep 26"
+  monthShort: (d: Date) => string; // "Sep"
   monthYear: (d: Date) => string; // "September 2026"
   dateMedium: (d: Date) => string; // "Sep 26, 2026"
   dateFull: (d: Date) => string; // "Saturday, September 26, 2026"
@@ -94,6 +95,7 @@ function englishFormat(): Format {
     dayShort: (d) => intl(d, { weekday: "short", month: "short", day: "numeric" }),
     monthDay: (d) => intl(d, { month: "long", day: "numeric" }),
     monthDayShort: (d) => intl(d, { month: "short", day: "numeric" }),
+    monthShort: (d) => intl(d, { month: "short" }),
     monthYear: (d) => intl(d, { month: "long", year: "numeric" }),
     dateMedium: (d) => intl(d, { month: "short", day: "numeric", year: "numeric" }),
     dateFull: (d) => d.toLocaleDateString(undefined, { dateStyle: "full" }),
@@ -120,6 +122,7 @@ function urduFormat(): Format {
     dayShort: (d) => `${UR_WEEKDAYS_SHORT[d.getDay()]}، ${monthDay(d)}`,
     monthDay,
     monthDayShort: monthDay,
+    monthShort: (d) => UR_MONTHS[d.getMonth()],
     monthYear: (d) => `${UR_MONTHS[d.getMonth()]} ${d.getFullYear()}`,
     dateMedium,
     dateFull: (d) => `${UR_WEEKDAYS[d.getDay()]}، ${dateMedium(d)}`,

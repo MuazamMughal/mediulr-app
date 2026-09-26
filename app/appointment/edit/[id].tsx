@@ -3,12 +3,14 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SheetStatus } from "../../../src/components/SheetStatus";
 import { AppointmentForm } from "../../../src/features/appointments/AppointmentForm";
 import { useAppointments } from "../../../src/features/appointments/useAppointments";
+import { useI18n } from "../../../src/i18n/LocaleProvider";
 import { useActiveProfile } from "../../../src/features/profile/ActiveProfile";
 import type { Appointment } from "../../../src/types/domain";
 
 export default function EditAppointmentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useI18n();
   const { profile } = useActiveProfile();
   const { data: appointments, isLoading } = useAppointments(profile?.id);
 
@@ -18,7 +20,7 @@ export default function EditAppointmentScreen() {
   if (found) lastSeen.current = found;
   const shown = found ?? lastSeen.current;
 
-  if (isLoading || !profile) return <SheetStatus title="Doctor visit" onClose={() => router.dismiss()} />;
-  if (!shown) return <SheetStatus title="Doctor visit" onClose={() => router.dismiss()} message="This visit no longer exists." />;
+  if (isLoading || !profile) return <SheetStatus title={t("nav.doctorVisit")} onClose={() => router.dismiss()} />;
+  if (!shown) return <SheetStatus title={t("nav.doctorVisit")} onClose={() => router.dismiss()} message={t("visits.sheet.gone")} />;
   return <AppointmentForm mode="edit" appointment={shown} />;
 }

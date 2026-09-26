@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { AppButton } from "./AppButton";
+import { useI18n } from "../i18n/LocaleProvider";
 
 interface HomeEmptyStateProps {
   onAddMedication: () => void;
@@ -23,6 +24,7 @@ interface HomeEmptyStateProps {
 /** The home screen before anything exists: one illustration, one primary action, one quiet secondary link. */
 export function HomeEmptyState({ onAddMedication, onAddVisit }: HomeEmptyStateProps) {
   const theme = useTheme();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const float = useSharedValue(0);
 
@@ -61,17 +63,17 @@ export function HomeEmptyState({ onAddMedication, onAddVisit }: HomeEmptyStatePr
       {/* Copy */}
       <Animated.View entering={FadeInDown.duration(450).delay(120)} style={styles.copy}>
         <AppText variant="h1" style={styles.title}>
-          Let's set up your first medication
+          {t("home.empty.title")}
         </AppText>
         <AppText variant="body" color="secondary" style={styles.subtitle}>
-          Add it once and Mediulr builds your daily schedule, then reminds you at exactly the right time.
+          {t("home.empty.text")}
         </AppText>
       </Animated.View>
 
       {/* A ghost preview of what the day will look like — shapes only, no made-up data */}
       <Animated.View entering={FadeInDown.duration(450).delay(220)} style={styles.preview}>
         <AppText variant="metadata" color="tertiary" style={styles.previewLabel}>
-          YOUR DAY WILL APPEAR HERE
+          {t("home.empty.preview")}
         </AppText>
         {[1, 0.6, 0.32].map((opacity, i) => (
           <View key={i} style={[styles.ghostRow, { opacity }]}>
@@ -87,7 +89,7 @@ export function HomeEmptyState({ onAddMedication, onAddVisit }: HomeEmptyStatePr
 
       {/* The one action */}
       <Animated.View entering={FadeInDown.duration(450).delay(320)} style={styles.actions}>
-        <AppButton label="Add your first medication" onPress={onAddMedication} />
+        <AppButton label={t("home.empty.action")} onPress={onAddMedication} />
         <Pressable
           onPress={onAddVisit}
           hitSlop={8}
@@ -95,9 +97,9 @@ export function HomeEmptyState({ onAddMedication, onAddVisit }: HomeEmptyStatePr
           style={({ pressed }) => [styles.link, pressed && { opacity: 0.6 }]}
         >
           <AppText variant="bodySmall" color="secondary">
-            Or{" "}
+            {t("common.orWord")}{" "}
             <AppText variant="bodySmall" color="accent" weight="semibold">
-              add a doctor visit
+              {t("home.empty.orVisit")}
             </AppText>
           </AppText>
         </Pressable>

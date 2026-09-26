@@ -2,6 +2,7 @@ import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
+import { useI18n } from "../i18n/LocaleProvider";
 
 export type Period = "Morning" | "Afternoon" | "Evening" | "Night";
 
@@ -23,11 +24,12 @@ export function periodOf(date: Date): Period {
 /** The small "MORNING / AFTERNOON…" label that groups a day's timeline. */
 export function PeriodHeader({ period }: { period: Period }) {
   const theme = useTheme();
+  const { t } = useI18n();
   return (
     <View style={styles.row}>
       <Ionicons name={PERIOD_ICON[period]} size={13} color={theme.colors.textTertiary} />
       <AppText variant="metadata" color="tertiary" style={styles.label}>
-        {period.toUpperCase()}
+        {t(`period.${period.toLowerCase()}` as "period.morning").toUpperCase()}
       </AppText>
     </View>
   );

@@ -48,7 +48,7 @@ export function planReminders(args: {
   /** Language for the notification text; defaults to the app's current one. */
   i18n?: I18n;
 }): PlannedReminder[] {
-  const { t } = args.i18n ?? getI18n();
+  const { t, fmt } = args.i18n ?? getI18n();
   const now = args.now ?? new Date();
   const horizon = new Date(now.getTime() + REMINDER_HORIZON_DAYS * 24 * HOUR);
   const profileName = new Map(args.profiles.map((p) => [p.id, p.isSelf ? null : p.displayName]));
@@ -85,12 +85,12 @@ export function planReminders(args: {
         let refillNote = "";
         if (supply != null) {
           supply -= 1;
-          if (supply <= 0) refillNote = " · last one — time to refill";
-          else if (supply <= threshold) refillNote = ` · ${supply} left, time to refill`;
+          if (supply <= 0) refillNote = ` · ${t("refill.lastOneRefill")}`;
+          else if (supply <= threshold) refillNote = ` · ${t("refill.leftTimeToRefill", { count: supply })}`;
         }
         reminders.push({
           id: `dose:${med.id}:${at.getTime()}`,
-          title: `Time for ${med.name}`,
+          title: t("notif.timeFor", { name: med.name }),
           body: `${med.dosage}${forWhom(med.profileId)}${refillNote}`,
           fireAt: at,
           category: "dose",
@@ -99,17 +99,17 @@ export function planReminders(args: {
       }
 
       if (followUps && at.getTime() <= followUpHorizon.getTime()) {
-        const due = at.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+        const due = fmt.time(at);
         FOLLOW_UP_MINUTES.forEach((minutes, index) => {
           const fireAt = new Date(at.getTime() + minutes * 60_000);
           const last = index === FOLLOW_UP_MINUTES.length - 1;
           const escalate = last && !!args.guardianProfileIds?.has(med.profileId);
           reminders.push({
             id: `nag:${med.id}:${at.getTime()}:${index + 1}`,
-            title: last ? `${med.name} is overdue` : `Still need to take ${med.name}?`,
+            title: last ? t("notif.overdue", { name: med.name }) : t("notif.stillNeed", { name: med.name }),
             body: escalate
-              ? `Due at ${due}. Tap "Tell guardian" if you'd like them to know.`
-              : `Due at ${due} · ${med.dosage}${forWhom(med.profileId)}`,
+              ? t("notif.escalateBody", { time: due })
+              : `${t("notif.dueAt", { time: due, dosage: med.dosage })}${forWhom(med.profileId)}`,
             fireAt,
             category: escalate ? "dose_escalate" : "dose",
             data,
@@ -143,7 +143,7 @@ export function planReminders(args: {
 
   for (const visit of args.appointments) {
     const at = new Date(visit.scheduledAt);
-    const detail = `${visit.specialty ?? "Doctor visit"}${forWhom(visit.profileId)}`;
+    const detail = `${visit.specialty ?? t("notif.visitFallback")}${forWhom(visit.profileId)}`;
     for (const [suffix, fireAt] of [
       ["day", new Date(at.getTime() - 24 * HOUR)],
       ["hour", new Date(at.getTime() - HOUR)],
@@ -151,7 +151,7 @@ export function planReminders(args: {
       if (fireAt.getTime() > now.getTime()) {
         reminders.push({
           id: `visit:${visit.id}:${suffix}`,
-          title: `Upcoming visit: ${visit.providerName}`,
+          title: t("notif.visitTitle", { provider: visit.providerName }),
           body: detail,
           fireAt,
         });

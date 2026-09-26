@@ -11,7 +11,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
 import { PreferencesProvider } from "../src/features/preferences/Preferences";
-import { LocaleProvider } from "../src/i18n/LocaleProvider";
+import { LocaleProvider, useI18n } from "../src/i18n/LocaleProvider";
 import { ActiveProfileProvider } from "../src/features/profile/ActiveProfile";
 import { cancelAllReminders } from "../src/features/notifications/scheduleNotifications";
 import { doseOutbox } from "../src/features/offline/doseOutbox";
@@ -58,6 +58,7 @@ function AuthSideEffects() {
 
 function Navigation() {
   const theme = useTheme();
+  const { t, isRTL } = useI18n();
 
   return (
     <Stack
@@ -77,12 +78,12 @@ function Navigation() {
         name="medication/new"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
-      <Stack.Screen name="medication/[id]" options={{ title: "Medication" }} />
+      <Stack.Screen name="medication/[id]" options={{ title: t("nav.medication") }} />
       <Stack.Screen
         name="appointment/new"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
-      <Stack.Screen name="appointment/[id]" options={{ title: "Doctor visit" }} />
+      <Stack.Screen name="appointment/[id]" options={{ title: t("nav.doctorVisit") }} />
       <Stack.Screen
         name="medication/edit/[id]"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
@@ -107,7 +108,7 @@ function Navigation() {
         name="exercise/[id]"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
-      <Stack.Screen name="guardians" options={{ title: "Guardians" }} />
+      <Stack.Screen name="guardians" options={{ title: t("nav.guardians") }} />
       <Stack.Screen
         name="guardian/new"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
@@ -116,7 +117,7 @@ function Navigation() {
         name="guardian/[id]"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
-      <Stack.Screen name="reminders" options={{ title: "Reminders" }} />
+      <Stack.Screen name="reminders" options={{ title: t("nav.reminders") }} />
       <Stack.Screen
         name="reminder/new"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
@@ -129,7 +130,7 @@ function Navigation() {
         name="paywall"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
-      <Stack.Screen name="settings" options={{ title: "Settings" }} />
+      <Stack.Screen name="settings" options={{ title: t("nav.settings") }} />
     </Stack>
   );
 }

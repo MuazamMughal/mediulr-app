@@ -7,6 +7,8 @@ import { toDateId, useCalendar, type CalendarDayMetadata } from "@marceloterreir
 import { useTheme } from "../theme/ThemeProvider";
 import { addDays } from "../lib/dates";
 import { AppText } from "./AppText";
+import { useI18n } from "../i18n/LocaleProvider";
+import type { I18n } from "../i18n";
 import type { DayOverview } from "../features/calendar/overview";
 import type { DayLogs } from "../features/lifestyle/logic";
 
@@ -26,15 +28,15 @@ interface MonthCalendarProps {
 
 const DAY_HEIGHT = 50;
 
-function describeDay(meta: CalendarDayMetadata, o: DayOverview | undefined, l?: DayLogs): string {
-  const parts = [meta.date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })];
-  if (o?.doses) parts.push(`${o.doses} ${o.doses === 1 ? "dose" : "doses"}, ${o.taken + o.skipped} done`);
-  if (o?.visits) parts.push(`${o.visits} doctor ${o.visits === 1 ? "visit" : "visits"}`);
-  if (l?.meals) parts.push(`${l.meals} ${l.meals === 1 ? "meal" : "meals"} logged`);
-  if (l?.activities) parts.push(`${l.activities} ${l.activities === 1 ? "activity" : "activities"} logged`);
-  if (l?.reminders) parts.push(`${l.reminders} ${l.reminders === 1 ? "reminder" : "reminders"}`);
-  if (o && !o.doses && !o.visits && !l?.meals && !l?.activities && !l?.reminders) parts.push("nothing scheduled");
-  return parts.join(", ");
+function describeDay(meta: CalendarDayMetadata, o: DayOverview | undefined, l: DayLogs | undefined, { t, tn, fmt, locale }: I18n): string {
+  const parts = [fmt.dayFull(meta.date)];
+  if (o?.doses) parts.push(tn("calendar.day.doses", o.doses, { done: o.taken + o.skipped }));
+  if (o?.visits) parts.push(tn("calendar.day.visits", o.visits));
+  if (l?.meals) parts.push(tn("calendar.day.meals", l.meals));
+  if (l?.activities) parts.push(tn("calendar.day.activities", l.activities));
+  if (l?.reminders) parts.push(tn("reminders.a11yCount", l.reminders));
+  if (o && !o.doses && !o.visits && !l?.meals && !l?.activities && !l?.reminders) parts.push(t("calendar.day.nothing"));
+  return parts.join(locale === "ur" ? "، " : ", ");
 }
 
 /**
@@ -46,14 +48,14 @@ function describeDay(meta: CalendarDayMetadata, o: DayOverview | undefined, l?: 
  */
 export function MonthCalendar({ selected, onSelect, month, onMonthChange, expanded, onToggleExpanded, overview, logs }: MonthCalendarProps) {
   const theme = useTheme();
+  const { t, fmt, isRTL } = useI18n();
   const selectedId = toDateId(selected);
 
-  const { weeksList, weekDaysList, calendarRowMonth } = useCalendar({
+  const { weeksList } = useCalendar({
     calendarMonthId: toDateId(month),
     calendarFirstDayOfWeek: "monday",
-    getCalendarWeekDayFormat: (date, locale) => date.toLocaleDateString(locale, { weekday: "narrow" }),
-    calendarFormatLocale: undefined,
   });
+  const calendarRowMonth = fmt.monthYear(month);
 
   // Collapsed: only the week that contains the selected day (or the first week if it's off-grid).
   const weeks = expanded ? weeksList : [weeksList.find((w) => w.some((d) => d.id === selectedId)) ?? weeksList[0]];
@@ -86,31 +88,31 @@ export function MonthCalendar({ selected, onSelect, month, onMonthChange, expand
             onSelect(today);
           }}
           accessibilityRole="button"
-          accessibilityLabel={`${calendarRowMonth}. Jump to today`}
+          accessibilityLabel={t("calendar.jumpToToday", { month: calendarRowMonth })}
           style={{ flex: 1 }}
         >
           <AppText variant="h3">{calendarRowMonth}</AppText>
           {!showingToday && (
             <AppText variant="metadata" color="accent" weight="semibold">
-              Back to today
+              {t("common.backToToday")}
             </AppText>
           )}
         </Pressable>
-        <NavButton icon="chevron-back" label={expanded ? "Previous month" : "Previous week"} onPress={() => step(-1)} />
-        <NavButton icon="chevron-forward" label={expanded ? "Next month" : "Next week"} onPress={() => step(1)} />
+        <NavButton icon={isRTL ? "chevron-forward" : "chevron-back"} label={expanded ? t("picker.previousMonth") : t("picker.previousWeek")} onPress={() => step(-1)} />
+        <NavButton icon={isRTL ? "chevron-back" : "chevron-forward"} label={expanded ? t("picker.nextMonth") : t("picker.nextWeek")} onPress={() => step(1)} />
         <NavButton
           icon={expanded ? "chevron-up" : "chevron-down"}
-          label={expanded ? "Show one week" : "Show full month"}
+          label={expanded ? t("calendar.showOneWeek") : t("calendar.showFullMonth")}
           onPress={onToggleExpanded}
         />
       </View>
 
       {/* Weekday letters */}
       <View style={styles.row}>
-        {weekDaysList.map((label, i) => (
-          <View key={`${label}-${i}`} style={styles.weekdayCell}>
-            <AppText variant="metadata" color="tertiary" weight="semibold">
-              {label}
+        {[1, 2, 3, 4, 5, 6, 0].map((dayIndex) => (
+          <View key={dayIndex} style={styles.weekdayCell}>
+            <AppText variant="metadata" color="tertiary" weight="semibold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+              {fmt.weekdayName(dayIndex, "narrow")}
             </AppText>
           </View>
         ))}
@@ -138,13 +140,13 @@ export function MonthCalendar({ selected, onSelect, month, onMonthChange, expand
 
       {expanded && (
         <View style={[styles.legend, { borderTopColor: theme.colors.border }]}>
-          <LegendDot color={theme.colors.accent} label="Medication" />
-          <LegendDot color={theme.colors.success} label="All done" />
-          <LegendDot color={theme.colors.warning} label="Missed" />
-          <LegendDot color={theme.colors.visit} label="Doctor visit" />
-          <LegendDot color={theme.colors.nutrition} label="Food" hollow />
-          <LegendDot color={theme.colors.exercise} label="Exercise" hollow />
-          <LegendDot color={theme.colors.reminder} label="Reminder" hollow />
+          <LegendDot color={theme.colors.accent} label={t("calendar.legend.medication")} />
+          <LegendDot color={theme.colors.success} label={t("calendar.legend.allDone")} />
+          <LegendDot color={theme.colors.warning} label={t("calendar.legend.missed")} />
+          <LegendDot color={theme.colors.visit} label={t("calendar.legend.visit")} />
+          <LegendDot color={theme.colors.nutrition} label={t("calendar.legend.food")} hollow />
+          <LegendDot color={theme.colors.exercise} label={t("calendar.legend.exercise")} hollow />
+          <LegendDot color={theme.colors.reminder} label={t("reminders.legend")} hollow />
         </View>
       )}
     </Animated.View>
@@ -180,6 +182,7 @@ const DayCell = memo(function DayCell({
   onPress: () => void;
 }) {
   const theme = useTheme();
+  const i18n = useI18n();
   const doses = overview?.doses ?? 0;
   const visits = overview?.visits ?? 0;
   const allDone = doses > 0 && overview!.taken + overview!.skipped === doses;
@@ -197,7 +200,7 @@ const DayCell = memo(function DayCell({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={describeDay(meta, overview, logs)}
+      accessibilityLabel={describeDay(meta, overview, logs, i18n)}
       accessibilityState={{ selected: isSelected }}
       style={styles.cell}
     >

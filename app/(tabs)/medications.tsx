@@ -11,12 +11,14 @@ import { MedicationRow } from "../../src/components/MedicationRow";
 import { GuardianBanner } from "../../src/components/GuardianBanner";
 import { useGuardians } from "../../src/features/guardians/useGuardians";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 import { useFinishedMedications, useMedications } from "../../src/features/medications/useMedications";
 import type { Medication } from "../../src/types/domain";
 
 export default function MedicationsScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useI18n();
   const { profile, isViewingSelf } = useActiveProfile();
   const { data: active, isLoading: activeLoading } = useMedications(profile?.id);
   const { data: finished, isLoading: finishedLoading } = useFinishedMedications(profile?.id);
@@ -26,20 +28,20 @@ export default function MedicationsScreen() {
 
   const sections = useMemo(() => {
     const result: { title: string; data: Medication[] }[] = [];
-    if (active?.length) result.push({ title: "Active", data: active });
+    if (active?.length) result.push({ title: t("meds.list.active"), data: active });
     // Finished courses and stopped medications stay listed so the history behind the calendar is never a mystery.
-    if (finished?.length) result.push({ title: "Completed", data: finished });
+    if (finished?.length) result.push({ title: t("meds.list.completed"), data: finished });
     return result;
-  }, [active, finished]);
+  }, [active, finished, t]);
   const hasAny = sections.length > 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={["top"]}>
       <View style={styles.header}>
-        <AppText variant="h1">Medications</AppText>
+        <AppText variant="h1">{t("tabs.medications")}</AppText>
         {!isViewingSelf && profile && (
           <AppText variant="bodySmall" color="secondary" style={{ marginTop: 2 }}>
-            For {profile.displayName}
+            {t("common.forName", { name: profile.displayName })}
           </AppText>
         )}
       </View>
@@ -55,9 +57,9 @@ export default function MedicationsScreen() {
       {!isLoading && !hasAny && (
         <EmptyState
           icon="medkit-outline"
-          title="Your medication list is clear"
-          description="Add your first medication and Mediulr will build a reminder schedule so you never lose track."
-          actionLabel="Add medication"
+          title={t("meds.list.empty.title")}
+          description={t("meds.list.empty.text")}
+          actionLabel={t("meds.list.empty.action")}
           onAction={() => router.push("/medication/new")}
         />
       )}
@@ -70,7 +72,7 @@ export default function MedicationsScreen() {
           ListHeaderComponent={guardians ? <GuardianBanner guardians={guardians} onPress={() => router.push("/guardians")} /> : null}
           renderSectionHeader={({ section }) =>
             // The first section needs no label when it's the only one.
-            sections.length > 1 || section.title === "Completed" ? (
+            sections.length > 1 || section.title === t("meds.list.completed") ? (
               <AppText variant="caption" color="secondary" style={styles.sectionHeader}>
                 {section.title.toUpperCase()}
               </AppText>
@@ -83,7 +85,7 @@ export default function MedicationsScreen() {
 
       {!isLoading && hasAny && (
         <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
-          <AppButton label="+ Add medication" onPress={() => router.push("/medication/new")} />
+          <AppButton label={`+ ${t("meds.list.empty.action")}`} onPress={() => router.push("/medication/new")} />
         </View>
       )}
     </SafeAreaView>

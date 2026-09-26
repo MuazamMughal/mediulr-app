@@ -5,7 +5,8 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { TimePanel } from "./TimePanel";
-import { formatTimeParts, parseHHMM, toHHMM } from "../lib/timeParts";
+import { parseHHMM, toHHMM } from "../lib/timeParts";
+import { useI18n } from "../i18n/LocaleProvider";
 
 /**
  * Editable list of dose reminder times — one row per occurrence. Tapping a row opens the app's time picker right
@@ -15,6 +16,7 @@ import { formatTimeParts, parseHHMM, toHHMM } from "../lib/timeParts";
  */
 export function TimeSlotEditor({ times, onChange, rowLabel }: { times: string[]; onChange: (times: string[]) => void; rowLabel?: (index: number) => string }) {
   const theme = useTheme();
+  const { t, fmt } = useI18n();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   function updateTime(index: number, hour: number, minute: number) {
@@ -28,12 +30,14 @@ export function TimeSlotEditor({ times, onChange, rowLabel }: { times: string[];
       {times.map((time, index) => {
         const isEditing = editingIndex === index;
         const parts = parseHHMM(time);
+        const label = rowLabel ? rowLabel(index) : t("picker.doseSlot", { n: index + 1 });
+        const shown = fmt.clock(parts);
         return (
           <View key={index}>
             <Pressable
               onPress={() => setEditingIndex(isEditing ? null : index)}
               accessibilityRole="button"
-              accessibilityLabel={`${rowLabel ? rowLabel(index) : `Dose ${index + 1}`}, ${formatTimeParts(parts)}. Change time`}
+              accessibilityLabel={t("picker.changeTime", { label, time: shown })}
               accessibilityState={{ expanded: isEditing }}
               style={({ pressed }) => [
                 styles.row,
@@ -45,19 +49,19 @@ export function TimeSlotEditor({ times, onChange, rowLabel }: { times: string[];
                 <Ionicons name="time-outline" size={15} color={theme.colors.medication} />
               </View>
               <AppText variant="bodySmall" color="secondary" style={{ flex: 1 }}>
-                {rowLabel ? rowLabel(index) : `Dose ${index + 1}`}
+                {label}
               </AppText>
               <AppText variant="bodyMedium" weight="semibold">
-                {formatTimeParts(parts)}
+                {shown}
               </AppText>
             </Pressable>
 
             {isEditing && (
               <Animated.View entering={FadeIn.duration(150)} style={[styles.panel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
                 <TimePanel hour={parts.hour} minute={parts.minute} onChange={(h, m) => updateTime(index, h, m)} />
-                <Pressable onPress={() => setEditingIndex(null)} accessibilityRole="button" accessibilityLabel="Done choosing time" style={styles.done}>
+                <Pressable onPress={() => setEditingIndex(null)} accessibilityRole="button" accessibilityLabel={t("picker.doneChoosingTime")} style={styles.done}>
                   <AppText variant="bodyMedium" color="accent" weight="semibold">
-                    Done
+                    {t("common.done")}
                   </AppText>
                 </Pressable>
               </Animated.View>

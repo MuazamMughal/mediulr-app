@@ -4,10 +4,12 @@ import { useTheme } from "../../src/theme/ThemeProvider";
 import { TabIcon } from "../../src/components/TabIcon";
 import { useReminderSync } from "../../src/features/notifications/useReminderSync";
 import { useDoseSync } from "../../src/features/offline/useDoseSync";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 
 export default function TabsLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   useReminderSync();
   useDoseSync();
 
@@ -33,7 +35,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Calendar",
+          title: t("tabs.calendar"),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="calendar-outline" activeName="calendar" color={color} size={size} focused={focused} />
           ),
@@ -42,7 +44,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="medications"
         options={{
-          title: "Medications",
+          title: t("tabs.medications"),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="medkit-outline" activeName="medkit" color={color} size={size} focused={focused} />
           ),
@@ -51,8 +53,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="appointments"
         options={{
-          title: "Doctor Visits",
-          tabBarLabel: "Visits",
+          title: t("appointments.title"),
+          tabBarLabel: t("tabs.visits"),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="person-outline" activeName="person" color={color} size={size} focused={focused} />
           ),
@@ -61,7 +63,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="lifestyle"
         options={{
-          title: "Lifestyle",
+          title: t("tabs.lifestyle"),
           // Simple mode keeps the app to the essentials: today, medications, visits, profile.
           href: theme.simple ? null : undefined,
           tabBarIcon: ({ color, size, focused }) => (
@@ -72,7 +74,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon
               name="person-circle-outline"

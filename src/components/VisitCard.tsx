@@ -2,10 +2,12 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
+import { useI18n } from "../i18n/LocaleProvider";
 import type { Appointment } from "../types/domain";
 
 export function VisitCard({ appointment, onPress }: { appointment: Appointment; onPress: () => void }) {
   const theme = useTheme();
+  const { t, fmt } = useI18n();
   const date = new Date(appointment.scheduledAt);
   const isPast = date.getTime() < Date.now();
 
@@ -20,7 +22,7 @@ export function VisitCard({ appointment, onPress }: { appointment: Appointment; 
     >
       <View style={styles.dateBlock}>
         <AppText variant="metadata" color="tertiary">
-          {date.toLocaleDateString(undefined, { month: "short" }).toUpperCase()}
+          {fmt.monthShort(date).toUpperCase()}
         </AppText>
         <AppText variant="h2" style={{ marginTop: -2 }}>
           {date.getDate()}
@@ -33,7 +35,7 @@ export function VisitCard({ appointment, onPress }: { appointment: Appointment; 
         </AppText>
         <AppText variant="caption" color="secondary" style={styles.subtitle}>
           {appointment.specialty ? `${appointment.specialty} · ` : ""}
-          {date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+          {fmt.time(date)}
         </AppText>
         {appointment.location && (
           <View style={styles.locationRow}>
@@ -47,7 +49,7 @@ export function VisitCard({ appointment, onPress }: { appointment: Appointment; 
       {isPast && (
         <View style={[styles.pastBadge, { backgroundColor: theme.colors.surfaceSunken }]}>
           <AppText variant="metadata" color="tertiary">
-            Past
+            {t("visits.past")}
           </AppText>
         </View>
       )}

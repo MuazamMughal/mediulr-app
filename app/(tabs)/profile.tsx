@@ -12,6 +12,7 @@ import { friendlyError } from "../../src/lib/friendlyError";
 import { useAddDependentProfile, useProfiles } from "../../src/features/profile/useProfiles";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useI18n } from "../../src/i18n/LocaleProvider";
+import { Chevron } from "../../src/components/Chevron";
 
 function NavRow({
   icon,
@@ -35,7 +36,7 @@ function NavRow({
       <AppText variant="bodyMedium" style={{ flex: 1 }}>
         {label}
       </AppText>
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+      <Chevron color={theme.colors.textTertiary} />
     </Pressable>
   );
 }
@@ -61,17 +62,17 @@ export default function ProfileScreen() {
         renderItem={() => (
           <>
             <AppText variant="h1" style={styles.pageTitle}>
-              Profile
+              {t("tabs.profile")}
             </AppText>
 
             {/* Your profile */}
             {self && (
               <View style={styles.selfRow}>
                 <Avatar name={self.displayName} size={56} />
-                <View style={{ marginLeft: 14 }}>
+                <View style={{ marginStart: 14 }}>
                   <AppText variant="h2">{self.displayName}</AppText>
                   <AppText variant="bodySmall" color="secondary">
-                    Your Mediulr account
+                    {t("profile.account")}
                   </AppText>
                 </View>
               </View>
@@ -79,27 +80,27 @@ export default function ProfileScreen() {
 
             {/* Family / Care */}
             <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
-              FAMILY & CARE
+              {t("profile.family")}
             </AppText>
             <AppCard padded={false} style={styles.familyCard}>
               {(profiles ?? []).map((p, i) => {
                 const isActive = activeProfile?.id === p.id;
                 return (
                   <View key={p.id}>
-                    {i > 0 && <Divider style={{ marginLeft: 68 }} />}
+                    {i > 0 && <Divider style={{ marginStart: 68 }} />}
                     <Pressable
                       onPress={() => setActiveProfileId(p.isSelf ? null : p.id)}
                       accessibilityRole="button"
                       accessibilityState={{ selected: isActive }}
-                      accessibilityLabel={`${p.isSelf ? "You" : p.displayName}${isActive ? ", currently viewing" : ". Tap to view their medications"}`}
+                      accessibilityLabel={isActive ? t("profile.a11yActive", { name: p.isSelf ? t("profile.you") : p.displayName }) : t("profile.a11yInactive", { name: p.isSelf ? t("profile.you") : p.displayName })}
                       style={({ pressed }) => [styles.dependentRow, pressed && { opacity: 0.7 }]}
                     >
                       <Avatar name={p.displayName} size={40} />
-                      <View style={{ flex: 1, marginLeft: 12 }}>
+                      <View style={{ flex: 1, marginStart: 12 }}>
                         <AppText variant="bodyMedium">{p.isSelf ? `${p.displayName} (You)` : p.displayName}</AppText>
                         {isActive && (
                           <AppText variant="caption" color="accent" weight="semibold">
-                            Viewing now
+                            {t("profile.viewingNow")}
                           </AppText>
                         )}
                       </View>
@@ -112,12 +113,12 @@ export default function ProfileScreen() {
                   </View>
                 );
               })}
-              {(profiles?.length ?? 0) > 0 && <Divider style={{ marginLeft: 68 }} />}
+              {(profiles?.length ?? 0) > 0 && <Divider style={{ marginStart: 68 }} />}
               {adding ? (
                 <View style={styles.addForm}>
                   <TextInput
                     style={[styles.addInput, { borderColor: theme.colors.border, color: theme.colors.textPrimary }]}
-                    placeholder="Family member's name"
+                    placeholder={t("profile.namePlaceholder")}
                     placeholderTextColor={theme.colors.textTertiary}
                     value={newName}
                     onChangeText={setNewName}
@@ -127,7 +128,7 @@ export default function ProfileScreen() {
                       if (!displayName) return;
                       addDependent.mutate(
                         { displayName },
-                        { onError: (err) => Alert.alert("Couldn't add family member", friendlyError(err)) }
+                        { onError: (err) => Alert.alert(t("profile.errAdd"), friendlyError(err)) }
                       );
                       setNewName("");
                       setAdding(false);
@@ -140,7 +141,7 @@ export default function ProfileScreen() {
                     <Ionicons name="add" size={18} color={theme.colors.accent} />
                   </View>
                   <AppText variant="bodyMedium" color="accent">
-                    Add family member
+                    {t("profile.addMember")}
                   </AppText>
                 </Pressable>
               )}
@@ -148,7 +149,7 @@ export default function ProfileScreen() {
 
             {/* Premium & Settings */}
             <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
-              ACCOUNT
+              {t("profile.accountSection")}
             </AppText>
             <AppCard padded={false}>
               <NavRow
@@ -158,20 +159,20 @@ export default function ProfileScreen() {
                 label={t("reminders.title")}
                 onPress={() => router.push("/reminders")}
               />
-              <Divider style={{ marginLeft: 68 }} />
+              <Divider style={{ marginStart: 68 }} />
               <NavRow
                 icon="sparkles"
                 iconColor={theme.colors.accent}
                 iconBg={theme.colors.accentSoft}
-                label="Mediulr Premium"
+                label={t("profile.premium")}
                 onPress={() => router.push("/paywall")}
               />
-              <Divider style={{ marginLeft: 68 }} />
+              <Divider style={{ marginStart: 68 }} />
               <NavRow
                 icon="settings-outline"
                 iconColor={theme.colors.textSecondary}
                 iconBg={theme.colors.surfaceSunken}
-                label="Settings"
+                label={t("nav.settings")}
                 onPress={() => router.push("/settings")}
               />
             </AppCard>
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
   pageTitle: { marginBottom: 20 },
   selfRow: { flexDirection: "row", alignItems: "center", marginBottom: 28 },
-  sectionLabel: { marginBottom: 8, marginLeft: 2, letterSpacing: 0.4 },
+  sectionLabel: { marginBottom: 8, marginStart: 2, letterSpacing: 0.4 },
   familyCard: { marginBottom: 24 },
   dependentRow: { flexDirection: "row", alignItems: "center", padding: 14 },
   addRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },

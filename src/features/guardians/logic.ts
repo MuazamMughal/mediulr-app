@@ -1,3 +1,4 @@
+import { getI18n, type I18n } from "../../i18n";
 import type { Guardian } from "../../types/domain";
 
 export const MAX_GUARDIANS = 3;
@@ -22,8 +23,13 @@ export function alertGuardians(guardians: Guardian[] | undefined): Guardian[] {
 }
 
 /** Button wording: "Tell Mom" for one guardian, "Tell guardians" for several. */
-export function tellLabel(guardians: Guardian[]): string {
-  return guardians.length === 1 ? `Tell ${guardians[0].name.split(" ")[0]}` : "Tell guardians";
+export function tellLabel(guardians: Guardian[], { t }: Pick<I18n, "t"> = getI18n()): string {
+  return guardians.length === 1 ? t("guardians.tellOne", { name: guardians[0].name.split(" ")[0] }) : t("guardians.tellMany");
+}
+
+/** A stored relationship ("Parent") shown in the current language; anything unrecognised is shown as typed. */
+export function relationshipLabel(value: string, { t }: Pick<I18n, "t"> = getI18n()): string {
+  return (RELATIONSHIPS as readonly string[]).includes(value) ? t(`relationship.${value}` as "relationship.Parent") : value;
 }
 
 export interface MissedDoseMessageInput {
@@ -35,10 +41,11 @@ export interface MissedDoseMessageInput {
 }
 
 /** The prefilled text. Deliberately minimal: what was missed and when — no diagnosis, no history. */
-export function buildMissedDoseMessage({ patientName, medicationName, dosage, scheduledAt }: MissedDoseMessageInput): string {
-  const time = scheduledAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  const who = patientName ? `${patientName} missed` : "I missed";
-  return `${who} the ${time} dose of ${medicationName} (${dosage}). Sent from Mediulr.`;
+export function buildMissedDoseMessage({ patientName, medicationName, dosage, scheduledAt }: MissedDoseMessageInput, { t, fmt }: Pick<I18n, "t" | "fmt"> = getI18n()): string {
+  const time = fmt.time(scheduledAt);
+  return patientName
+    ? t("guardians.msg.other", { patient: patientName, time, medicine: medicationName, dosage })
+    : t("guardians.msg.self", { time, medicine: medicationName, dosage });
 }
 
 /**

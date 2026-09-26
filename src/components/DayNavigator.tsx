@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "../theme/ThemeProvider";
 import { addDays } from "../lib/dates";
 import { isSameDay, relativeDayLabel } from "../lib/dayTime";
+import { useI18n } from "../i18n/LocaleProvider";
 import { AppText } from "./AppText";
 import { DatePanel } from "./DatePanel";
 
@@ -14,6 +15,7 @@ import { DatePanel } from "./DatePanel";
  */
 export function DayNavigator({ day, onChange }: { day: Date; onChange: (next: Date) => void }) {
   const theme = useTheme();
+  const { t, fmt, isRTL } = useI18n();
   const [picking, setPicking] = useState(false);
   const isToday = isSameDay(day, new Date());
 
@@ -25,26 +27,26 @@ export function DayNavigator({ day, onChange }: { day: Date; onChange: (next: Da
   return (
     <View>
       <View style={styles.row}>
-        <NavButton icon="chevron-back" label="Previous day" onPress={() => go(addDays(day, -1))} />
+        <NavButton icon={isRTL ? "chevron-forward" : "chevron-back"} label={t("picker.previousDay")} onPress={() => go(addDays(day, -1))} />
         <Pressable
           onPress={() => setPicking((p) => !p)}
           accessibilityRole="button"
-          accessibilityLabel={`${day.toLocaleDateString(undefined, { dateStyle: "full" })}. Choose a date`}
+          accessibilityLabel={t("picker.chooseDate", { date: fmt.dateFull(day) })}
           style={styles.label}
         >
-          <AppText variant="h3">{relativeDayLabel(day)}</AppText>
+          <AppText variant="h3">{relativeDayLabel(day, new Date(), { t, fmt })}</AppText>
           <AppText variant="metadata" color="tertiary">
-            {day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+            {fmt.dayFull(day)}
           </AppText>
         </Pressable>
         {!isToday && (
-          <Pressable onPress={() => go(new Date())} hitSlop={8} accessibilityRole="button" accessibilityLabel="Back to today">
+          <Pressable onPress={() => go(new Date())} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.backToToday")}>
             <AppText variant="caption" color="accent" weight="semibold">
-              Today
+              {t("common.today")}
             </AppText>
           </Pressable>
         )}
-        <NavButton icon="chevron-forward" label="Next day" onPress={() => go(addDays(day, 1))} />
+        <NavButton icon={isRTL ? "chevron-back" : "chevron-forward"} label={t("picker.nextDay")} onPress={() => go(addDays(day, 1))} />
       </View>
 
       {picking && (

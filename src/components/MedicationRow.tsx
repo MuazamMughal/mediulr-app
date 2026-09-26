@@ -5,15 +5,19 @@ import { AppText } from "./AppText";
 import { describeRecurrence } from "../features/medications/describeRecurrence";
 import { describeCourse } from "../features/medications/describeCourse";
 import { refillStatus } from "../features/medications/refill";
+import { useI18n } from "../i18n/LocaleProvider";
 import type { Medication } from "../types/domain";
+import { Chevron } from "./Chevron";
 
 export function MedicationRow({ medication, onPress }: { medication: Medication; onPress: () => void }) {
   const theme = useTheme();
+  const i18n = useI18n();
+  const { t } = i18n;
   const supply = refillStatus(medication);
   const lowStock = !!supply?.low;
 
-  const course = describeCourse(medication);
-  const showCourse = course.status !== "Ongoing";
+  const course = describeCourse(medication, new Date(), i18n);
+  const showCourse = course.kind !== "ongoing";
 
   return (
     <Pressable
@@ -28,7 +32,7 @@ export function MedicationRow({ medication, onPress }: { medication: Medication;
           {medication.name}
         </AppText>
         <AppText variant="caption" color="secondary" style={styles.subtitle}>
-          {medication.dosage} · {describeRecurrence(medication.recurrenceRule)}
+          {medication.dosage} · {describeRecurrence(medication.recurrenceRule, i18n)}
         </AppText>
         {showCourse && (
           <AppText variant="caption" color={course.active ? "accent" : "tertiary"} weight="semibold" style={styles.subtitle}>
@@ -40,12 +44,12 @@ export function MedicationRow({ medication, onPress }: { medication: Medication;
       {medication.quantityOnHand != null && (
         <View style={styles.meta}>
           <AppText variant="caption" color={lowStock ? "warning" : "tertiary"} weight={lowStock ? "semibold" : "regular"}>
-            {lowStock ? "Refill soon · " : ""}
-            {medication.quantityOnHand} left
+            {lowStock ? `${t("refill.soon")} · ` : ""}
+            {t("refill.leftCount", { count: medication.quantityOnHand })}
           </AppText>
         </View>
       )}
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+      <Chevron color={theme.colors.textTertiary} />
     </Pressable>
   );
 }
@@ -56,5 +60,5 @@ const styles = StyleSheet.create({
   icon: { width: 40, height: 40, borderRadius: 12, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
   body: { flex: 1 },
   subtitle: { marginTop: 2 },
-  meta: { marginRight: 4 },
+  meta: { marginEnd: 4 },
 });

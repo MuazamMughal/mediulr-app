@@ -22,13 +22,10 @@ interface TimelineItemProps {
   onPress?: () => void;
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
 export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, onTellGuardian, onToggleReminder, onPress }: TimelineItemProps) {
   const theme = useTheme();
   const { t, fmt } = useI18n();
+  const formatTime = (iso: string) => fmt.time(new Date(iso));
   const avatarSize = theme.simple ? styles.avatarSimple : null;
 
   if (event.kind === "medication") {
@@ -57,7 +54,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
                 </View>
               </View>
               <AppText variant="caption" color={missed ? "warning" : "tertiary"} weight={missed ? "semibold" : undefined} style={styles.subtitle}>
-                {missed ? "Missed · " : ""}
+                {missed ? `${t("timeline.missed")} · ` : ""}
                 {formatTime(event.at)}
                 {medication.instructions ? ` · ${medication.instructions}` : ""}
               </AppText>
@@ -66,6 +63,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
               done={done}
               taken={taken}
               missed={missed}
+              labels={{ mark: t("dose.markTaken"), done: t("dose.taken"), skipped: t("dose.skipped") }}
               onPress={() => {
                 if (done) return;
                 onMarkTaken?.(medication.id, event.at);
@@ -77,7 +75,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
               <View style={styles.linkRow}>
                 <Pressable onPress={() => onSkip?.(medication.id, event.at)} hitSlop={6} style={styles.skipLink}>
                   <AppText variant="caption" color="tertiary">
-                    Skip
+                    {t("timeline.skip")}
                   </AppText>
                 </Pressable>
                 {missed && onTellGuardian && tellGuardianLabel && (
@@ -85,7 +83,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
                     onPress={() => onTellGuardian(medication, event.at)}
                     hitSlop={6}
                     accessibilityRole="button"
-                    accessibilityLabel={`${tellGuardianLabel} that you missed ${medication.name}`}
+                    accessibilityLabel={t("timeline.tellA11y", { label: tellGuardianLabel, medication: medication.name })}
                     style={styles.skipLink}
                   >
                     <AppText variant="caption" color="accent" weight="semibold">
@@ -128,7 +126,7 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
         <Pressable
           onPress={onPress}
           accessibilityRole="button"
-          accessibilityLabel={`${reminder.title}, ${fmt.time(new Date(event.at))}${done ? `, ${t("reminders.isDone")}` : overdue ? `, ${t("reminders.overdue")}` : ""}`}
+          accessibilityLabel={`${reminder.title}, ${formatTime(event.at)}${done ? `, ${t("reminders.isDone")}` : overdue ? `, ${t("reminders.overdue")}` : ""}`}
           style={({ pressed }) => [styles.row, pressed && styles.pressed]}
         >
           <View style={[styles.avatar, avatarSize, { backgroundColor: done ? theme.colors.surfaceSunken : theme.colors.reminderSoft }]}>

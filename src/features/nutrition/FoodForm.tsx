@@ -12,7 +12,8 @@ import { SegmentedChips } from "../../components/SegmentedChips";
 import { DateTimeField } from "../../components/DateTimeField";
 import { friendlyError } from "../../lib/friendlyError";
 import { useActiveProfile } from "../profile/ActiveProfile";
-import { MEAL_TYPES } from "./constants";
+import { useI18n } from "../../i18n/LocaleProvider";
+import { MEAL_TYPES, mealLabel } from "./constants";
 import { mealTypeForHour, recentFoods } from "./logic";
 import { useAddFood, useDeleteFood, useRecentFood, useUpdateFood } from "./useFood";
 import type { FoodEntry, MealType } from "../../types/domain";
@@ -37,6 +38,8 @@ export function FoodForm(props: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useActiveProfile();
+  const i18n = useI18n();
+  const { t } = i18n;
   const editing = props.mode === "edit";
   const entry = props.mode === "edit" ? props.entry : null;
 
@@ -85,21 +88,21 @@ export function FoodForm(props: Props) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       router.dismiss();
     } catch (err) {
-      Alert.alert(entry ? "Couldn't update meal" : "Couldn't save meal", friendlyError(err));
+      Alert.alert(entry ? t("food.form.errUpdate") : t("food.form.errSave"), friendlyError(err));
     }
   }
 
   function handleDelete() {
     if (!entry) return;
-    Alert.alert("Delete this meal?", "It will be removed from your day and your calendar.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("food.form.deleteTitle"), t("food.form.deleteBody"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Delete",
+        text: t("common.delete"),
         style: "destructive",
         onPress: () =>
           deleteFood.mutate(entry.id, {
             onSuccess: () => router.dismiss(),
-            onError: (err) => Alert.alert("Couldn't delete meal", friendlyError(err)),
+            onError: (err) => Alert.alert(t("food.form.errDelete"), friendlyError(err)),
           }),
       },
     ]);
@@ -109,18 +112,18 @@ export function FoodForm(props: Props) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <SheetHeader title={editing ? "Edit meal" : "Add food"} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("food.form.editTitle") : t("food.form.addTitle")} onClose={() => router.dismiss()} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         {!editing && profile && !profile.isSelf && (
           <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
-            Adding for {profile.displayName}.
+            {t("common.addingFor", { name: profile.displayName })}
           </AppText>
         )}
 
         <View style={styles.field}>
           <AppInput
-            label="What did you eat?"
-            placeholder="e.g. Oatmeal and banana"
+            label={t("food.form.what")}
+            placeholder={t("food.form.whatPlaceholder")}
             value={name}
             onChangeText={setName}
             autoFocus={!editing}
@@ -132,7 +135,7 @@ export function FoodForm(props: Props) {
         {!editing && recents.length > 0 && (
           <View style={styles.field}>
             <AppText variant="caption" color="secondary" style={styles.label}>
-              Recent
+              {t("food.form.recent")}
             </AppText>
             <SegmentedChips
               options={recents.map((r) => r.name)}
@@ -147,10 +150,10 @@ export function FoodForm(props: Props) {
 
         <View style={styles.field}>
           <AppText variant="caption" color="secondary" style={styles.label}>
-            Meal
+            {t("food.form.meal")}
           </AppText>
           <SegmentedChips
-            options={MEAL_TYPES.map((m) => m.label)}
+            options={MEAL_TYPES.map((m) => mealLabel(m.value, i18n))}
             selectedIndex={MEAL_TYPES.findIndex((m) => m.value === mealType)}
             onSelect={(i) => {
               setMealType(MEAL_TYPES[i].value);
@@ -164,13 +167,13 @@ export function FoodForm(props: Props) {
         </View>
 
         <View style={styles.field}>
-          <AppInput label="How much? (optional)" placeholder="e.g. 1 bowl, 2 eggs, 200g" value={quantity} onChangeText={setQuantity} maxLength={60} />
+          <AppInput label={t("food.form.howMuch")} placeholder={t("food.form.howMuchPlaceholder")} value={quantity} onChangeText={setQuantity} maxLength={60} />
         </View>
 
         <View style={styles.field}>
           <AppInput
-            label="Notes (optional)"
-            placeholder="e.g. Had this after my medication"
+            label={t("food.form.notes")}
+            placeholder={t("food.form.notesPlaceholder")}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -181,13 +184,13 @@ export function FoodForm(props: Props) {
 
         {editing && (
           <View style={styles.destructive}>
-            <AppButton label="Delete meal" variant="destructive" onPress={handleDelete} loading={deleteFood.isPending} />
+            <AppButton label={t("food.form.delete")} variant="destructive" onPress={handleDelete} loading={deleteFood.isPending} />
           </View>
         )}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16, borderTopColor: theme.colors.border, backgroundColor: theme.colors.background }]}>
-        <AppButton label={editing ? "Save changes" : "Save meal"} onPress={handleSave} disabled={!canSave} loading={saving} />
+        <AppButton label={editing ? t("common.saveChanges") : t("food.form.save")} onPress={handleSave} disabled={!canSave} loading={saving} />
       </View>
     </KeyboardAvoidingView>
   );
@@ -197,7 +200,7 @@ const styles = StyleSheet.create({
   content: { padding: 20 },
   subheading: { marginBottom: 20 },
   field: { marginBottom: 18 },
-  label: { marginBottom: 8, marginLeft: 2 },
+  label: { marginBottom: 8, marginStart: 2 },
   multiline: { minHeight: 90, textAlignVertical: "top" },
   destructive: { marginTop: 10 },
   footer: { padding: 16, borderTopWidth: 1 },

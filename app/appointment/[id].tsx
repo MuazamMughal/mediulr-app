@@ -9,9 +9,11 @@ import { AppButton } from "../../src/components/AppButton";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
 import { useAppointments, useUpdatePostVisitNotes } from "../../src/features/appointments/useAppointments";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 
 export default function AppointmentDetailScreen() {
   const theme = useTheme();
+  const { t, fmt } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -53,7 +55,7 @@ export default function AppointmentDetailScreen() {
       { id: appointment.id, notes: notes.trim() || null },
       {
         onSuccess: () => setDirty(false),
-        onError: (err) => Alert.alert("Couldn't save notes", friendlyError(err)),
+        onError: (err) => Alert.alert(t("visits.detail.errNotes"), friendlyError(err)),
       }
     );
   }
@@ -86,7 +88,7 @@ export default function AppointmentDetailScreen() {
           <View style={styles.detailRow}>
             <Ionicons name="time-outline" size={16} color={theme.colors.textTertiary} />
             <AppText variant="bodyMedium">
-              {new Date(appointment.scheduledAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+              {fmt.dateTimeMedium(new Date(appointment.scheduledAt))}
             </AppText>
           </View>
           {appointment.location && (
@@ -100,7 +102,7 @@ export default function AppointmentDetailScreen() {
         {appointment.preVisitNotes && (
           <View style={styles.section}>
             <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
-              BEFORE YOUR VISIT
+              {t("visits.detail.before")}
             </AppText>
             <View style={[styles.softSurface, { backgroundColor: theme.colors.visitSoft }]}>
               <AppText variant="body">{appointment.preVisitNotes}</AppText>
@@ -110,14 +112,14 @@ export default function AppointmentDetailScreen() {
 
         <View style={styles.section}>
           <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
-            WHAT THE DOCTOR SAID
+            {t("visits.detail.said")}
           </AppText>
           <TextInput
             style={[
               styles.notesInput,
               { borderColor: theme.colors.border, backgroundColor: theme.colors.surface, color: theme.colors.textPrimary },
             ]}
-            placeholder="Notes, next steps…"
+            placeholder={t("visits.detail.notesPlaceholder")}
             placeholderTextColor={theme.colors.textTertiary}
             multiline
             value={notes}
@@ -130,11 +132,11 @@ export default function AppointmentDetailScreen() {
         </View>
 
         <View style={{ marginTop: 24 }}>
-          <AppButton label="Edit visit" variant="secondary" onPress={() => router.push(`/appointment/edit/${appointment.id}`)} />
+          <AppButton label={t("visits.detail.edit")} variant="secondary" onPress={() => router.push(`/appointment/edit/${appointment.id}`)} />
         </View>
 
         <AppText variant="caption" color="tertiary" style={styles.hint}>
-          This stays on your device and account only — Mediulr never sends visit notes to a provider.
+          {t("visits.detail.privacy")}
         </AppText>
       </ScrollView>
     </KeyboardAvoidingView>

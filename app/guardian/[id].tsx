@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SheetStatus } from "../../src/components/SheetStatus";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 import { GuardianForm } from "../../src/features/guardians/GuardianForm";
 import { useGuardians } from "../../src/features/guardians/useGuardians";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
@@ -9,6 +10,7 @@ import type { Guardian } from "../../src/types/domain";
 export default function GuardianDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useI18n();
   const { profile } = useActiveProfile();
   const { data: guardians, isLoading, isError, refetch } = useGuardians(profile?.id);
 
@@ -18,8 +20,8 @@ export default function GuardianDetailScreen() {
   if (found) lastSeen.current = found;
   const shown = found ?? lastSeen.current;
 
-  if (isLoading) return <SheetStatus title="Guardian" onClose={() => router.dismiss()} />;
-  if (isError) return <SheetStatus title="Guardian" onClose={() => router.dismiss()} message="Couldn't load this guardian." onRetry={() => refetch()} />;
-  if (!shown) return <SheetStatus title="Guardian" onClose={() => router.dismiss()} message="This guardian no longer exists." />;
+  if (isLoading) return <SheetStatus title={t("nav.guardian")} onClose={() => router.dismiss()} />;
+  if (isError) return <SheetStatus title={t("nav.guardian")} onClose={() => router.dismiss()} message={t("guardians.sheet.loadError")} onRetry={() => refetch()} />;
+  if (!shown) return <SheetStatus title={t("nav.guardian")} onClose={() => router.dismiss()} message={t("guardians.sheet.gone")} />;
   return <GuardianForm mode="edit" guardian={shown} />;
 }
