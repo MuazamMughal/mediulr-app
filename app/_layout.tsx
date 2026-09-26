@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
 import { PreferencesProvider } from "../src/features/preferences/Preferences";
+import { LocaleProvider } from "../src/i18n/LocaleProvider";
 import { ActiveProfileProvider } from "../src/features/profile/ActiveProfile";
 import { cancelAllReminders } from "../src/features/notifications/scheduleNotifications";
 import { doseOutbox } from "../src/features/offline/doseOutbox";
@@ -127,6 +128,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <PreferencesProvider>
+          <LocaleProvider>
           <ThemeProvider>
             <PersistQueryClientProvider
               client={queryClient}
@@ -146,6 +148,7 @@ export default function RootLayout() {
               </ActiveProfileProvider>
             </PersistQueryClientProvider>
           </ThemeProvider>
+          </LocaleProvider>
         </PreferencesProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

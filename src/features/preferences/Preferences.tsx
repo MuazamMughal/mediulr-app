@@ -1,14 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { LanguagePref } from "../../i18n/core";
 
 export interface Preferences {
   /** Nudge again (and offer "Tell guardian") when a dose is left unanswered. */
   followUps: boolean;
   /** Larger text, larger buttons, and fewer things on screen. */
   simpleMode: boolean;
+  /** "system" follows the phone's language (Urdu phones get Urdu, everything else English). */
+  language: LanguagePref;
 }
 
-export const DEFAULT_PREFERENCES: Preferences = { followUps: true, simpleMode: false };
+export const DEFAULT_PREFERENCES: Preferences = { followUps: true, simpleMode: false, language: "system" };
 const STORAGE_KEY = "mediulr:preferences";
 
 /** Latest saved values for code that runs outside React (notification handlers). Updated by the provider. */
@@ -37,6 +40,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
         const merged: Preferences = {
           followUps: typeof saved.followUps === "boolean" ? saved.followUps : DEFAULT_PREFERENCES.followUps,
           simpleMode: typeof saved.simpleMode === "boolean" ? saved.simpleMode : DEFAULT_PREFERENCES.simpleMode,
+          language: saved.language === "en" || saved.language === "ur" || saved.language === "system" ? saved.language : DEFAULT_PREFERENCES.language,
         };
         latest = merged;
         setPrefs(merged);
