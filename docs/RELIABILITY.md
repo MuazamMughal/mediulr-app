@@ -28,3 +28,8 @@ How the "a dose must never be missed because of the phone" features work, and wh
 
 ## Simple mode
 - Settings → Simple mode: text ×1.25 everywhere the design system is used, bigger buttons and dose check, larger tab bar, week strip instead of the month grid, and no Lifestyle tab / quick-add icons.
+
+## Time and date pickers
+- One in-app picker is used everywhere a time or date is chosen (medication dose times, food, exercise, doctor visits, the day navigator): `TimePanel` (hour grid, minute grid, AM/PM, ±1 minute) and `DatePanel` (month grid), opened inline under the field with a Done button.
+- It replaced the system date/time dialogs (`@react-native-community/datetimepicker`, now removed). On Android those dialogs are driven imperatively and could reopen on a later re-render — e.g. when tapping Save. A plain in-page panel has no such state, looks identical on every phone, and has large touch targets.
+- Times display in 12-hour form regardless of device locale; storage is unchanged (`"HH:MM"` for schedules, ISO instants elsewhere).

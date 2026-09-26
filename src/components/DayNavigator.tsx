@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../theme/ThemeProvider";
 import { addDays } from "../lib/dates";
 import { isSameDay, relativeDayLabel } from "../lib/dayTime";
 import { AppText } from "./AppText";
+import { DatePanel } from "./DatePanel";
 
 /**
  * Previous / next day with a tappable label that opens a date picker — the "history" control for the
@@ -15,8 +15,6 @@ import { AppText } from "./AppText";
 export function DayNavigator({ day, onChange }: { day: Date; onChange: (next: Date) => void }) {
   const theme = useTheme();
   const [picking, setPicking] = useState(false);
-  // iOS's spinner fires on every notch; hold the choice in a draft and load the day only when "Done" is tapped.
-  const [draft, setDraft] = useState(day);
   const isToday = isSameDay(day, new Date());
 
   function go(next: Date) {
@@ -29,10 +27,7 @@ export function DayNavigator({ day, onChange }: { day: Date; onChange: (next: Da
       <View style={styles.row}>
         <NavButton icon="chevron-back" label="Previous day" onPress={() => go(addDays(day, -1))} />
         <Pressable
-          onPress={() => {
-            setDraft(day);
-            setPicking((p) => !p);
-          }}
+          onPress={() => setPicking((p) => !p)}
           accessibilityRole="button"
           accessibilityLabel={`${day.toLocaleDateString(undefined, { dateStyle: "full" })}. Choose a date`}
           style={styles.label}
@@ -52,22 +47,16 @@ export function DayNavigator({ day, onChange }: { day: Date; onChange: (next: Da
         <NavButton icon="chevron-forward" label="Next day" onPress={() => go(addDays(day, 1))} />
       </View>
 
-      {picking && Platform.OS === "ios" && (
+      {picking && (
         <View style={[styles.pickerWrap, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <DateTimePicker value={draft} mode="date" display="spinner" onValueChange={(_, d) => setDraft(d)} />
-          <Pressable
-            onPress={() => {
+          <DatePanel
+            value={day}
+            onChange={(d) => {
+              onChange(d);
               setPicking(false);
-              onChange(draft);
-            }} style={styles.doneRow} accessibilityRole="button">
-            <AppText variant="bodySmall" color="accent" weight="semibold">
-              Done
-            </AppText>
-          </Pressable>
+            }}
+          />
         </View>
-      )}
-      {picking && Platform.OS === "android" && (
-        <DateTimePicker value={day} mode="date" onValueChange={(_, d) => onChange(d)} onDismiss={() => setPicking(false)} />
       )}
     </View>
   );
@@ -92,6 +81,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20 },
   label: { flex: 1, minHeight: 44, justifyContent: "center" },
   navButton: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  pickerWrap: { marginHorizontal: 20, marginTop: 8, borderWidth: 1.5, borderRadius: 14, borderCurve: "continuous", paddingTop: 8 },
-  doneRow: { alignItems: "flex-end", paddingVertical: 10, paddingHorizontal: 14 },
+  pickerWrap: { marginHorizontal: 20, marginTop: 8, borderWidth: 1.5, borderRadius: 14, borderCurve: "continuous", padding: 12 },
 });

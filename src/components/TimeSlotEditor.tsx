@@ -1,39 +1,25 @@
 import { useState } from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
-
-function timeToDate(time: string): Date {
-  const [hours, minutes] = time.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d;
-}
-
-function dateToTime(date: Date): string {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
-}
-
-function formatTime(time: string): string {
-  return timeToDate(time).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
+import { TimePanel } from "./TimePanel";
+import { formatTimeParts, parseHHMM, toHHMM } from "../lib/timeParts";
 
 /**
- * Editable list of dose reminder times — one row per occurrence, each opening the
- * native time picker. The number of rows is controlled by the caller (medication/new.tsx
- * resizes `times` when the frequency chip changes); this component only edits values.
+ * Editable list of dose reminder times — one row per occurrence. Tapping a row opens the app's time picker right
+ * under it (inline, never a system dialog); "Done" or tapping the row again closes it. The number of rows is
+ * controlled by the caller (the medication form resizes `times` when the frequency chip changes); this component
+ * only edits values.
  */
 export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange: (times: string[]) => void }) {
   const theme = useTheme();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  function updateTime(index: number, date: Date) {
+  function updateTime(index: number, hour: number, minute: number) {
     const next = [...times];
-    next[index] = dateToTime(date);
+    next[index] = toHHMM({ hour, minute });
     onChange(next);
   }
 
@@ -41,10 +27,14 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
     <View style={styles.container}>
       {times.map((time, index) => {
         const isEditing = editingIndex === index;
+        const parts = parseHHMM(time);
         return (
           <View key={index}>
             <Pressable
               onPress={() => setEditingIndex(isEditing ? null : index)}
+              accessibilityRole="button"
+              accessibilityLabel={`Dose ${index + 1}, ${formatTimeParts(parts)}. Change time`}
+              accessibilityState={{ expanded: isEditing }}
               style={({ pressed }) => [
                 styles.row,
                 { backgroundColor: theme.colors.surface, borderColor: isEditing ? theme.colors.accent : theme.colors.border },
@@ -58,33 +48,19 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
                 Dose {index + 1}
               </AppText>
               <AppText variant="bodyMedium" weight="semibold">
-                {formatTime(time)}
+                {formatTimeParts(parts)}
               </AppText>
             </Pressable>
 
-            {isEditing && Platform.OS === "ios" && (
-              <View style={[styles.pickerWrap, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-                <DateTimePicker
-                  value={timeToDate(time)}
-                  mode="time"
-                  display="spinner"
-                  onValueChange={(_, date) => updateTime(index, date)}
-                />
-                <Pressable onPress={() => setEditingIndex(null)} style={styles.doneRow}>
-                  <AppText variant="bodySmall" color="accent" weight="semibold">
+            {isEditing && (
+              <Animated.View entering={FadeIn.duration(150)} style={[styles.panel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                <TimePanel hour={parts.hour} minute={parts.minute} onChange={(h, m) => updateTime(index, h, m)} />
+                <Pressable onPress={() => setEditingIndex(null)} accessibilityRole="button" accessibilityLabel="Done choosing time" style={styles.done}>
+                  <AppText variant="bodyMedium" color="accent" weight="semibold">
                     Done
                   </AppText>
                 </Pressable>
-              </View>
-            )}
-
-            {isEditing && Platform.OS === "android" && (
-              <DateTimePicker
-                value={timeToDate(time)}
-                mode="time"
-                onValueChange={(_, date) => updateTime(index, date)}
-                onDismiss={() => setEditingIndex(null)}
-              />
+              </Animated.View>
             )}
           </View>
         );
@@ -95,8 +71,8 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
 
 const styles = StyleSheet.create({
   container: { gap: 8 },
-  row: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 12, borderCurve: "continuous", paddingVertical: 12, paddingHorizontal: 12 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 52, borderWidth: 1.5, borderRadius: 12, borderCurve: "continuous", paddingVertical: 10, paddingHorizontal: 12 },
   doseIcon: { width: 26, height: 26, borderRadius: 8, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
-  pickerWrap: { borderWidth: 1.5, borderTopWidth: 0, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, marginTop: -8, paddingTop: 8 },
-  doneRow: { alignItems: "flex-end", paddingVertical: 8, paddingHorizontal: 12 },
+  panel: { marginTop: 6, borderWidth: 1.5, borderRadius: 12, borderCurve: "continuous", padding: 12 },
+  done: { alignSelf: "flex-end", minHeight: 44, justifyContent: "center", paddingHorizontal: 8, marginTop: 4 },
 });

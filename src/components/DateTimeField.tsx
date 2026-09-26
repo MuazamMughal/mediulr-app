@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
+import { DatePanel } from "./DatePanel";
+import { TimePanel } from "./TimePanel";
+import { formatTimeParts, withCalendarDay, withClockTime } from "../lib/timeParts";
 
 interface DateTimeFieldProps {
   label?: string;
@@ -13,85 +16,93 @@ interface DateTimeFieldProps {
   tint?: string;
 }
 
+type Open = "date" | "time" | null;
+
 /**
- * Date and time as two separate, always-visible controls (a date and a time are two different decisions, and
- * most entries only ever change the time). iOS shows the native compact pickers in place; Android opens the
- * system dialog on tap — the same pickers the rest of the app uses.
+ * Date and time as two always-visible buttons; tapping one opens its picker right underneath (inline, in the page —
+ * never a system dialog), and tapping it again or "Done" closes it. Choosing a date closes it straight away.
  */
 export function DateTimeField({ label = "When", value, onChange, tint }: DateTimeFieldProps) {
   const theme = useTheme();
-  const [androidMode, setAndroidMode] = useState<"date" | "time" | null>(null);
+  const [open, setOpen] = useState<Open>(null);
   const iconColor = tint ?? theme.colors.accent;
 
-  function merge(mode: "date" | "time", picked: Date) {
-    const next = new Date(value);
-    if (mode === "date") next.setFullYear(picked.getFullYear(), picked.getMonth(), picked.getDate());
-    else next.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
-    onChange(next);
-  }
+  const toggle = (which: Exclude<Open, null>) => setOpen((cur) => (cur === which ? null : which));
 
   return (
     <View>
       <AppText variant="caption" color="secondary" style={styles.label}>
         {label}
       </AppText>
-      <View style={[styles.box, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
-        {Platform.OS === "ios" ? (
-          <>
-            <Ionicons name="calendar-outline" size={18} color={iconColor} />
-            <View style={styles.pickers}>
-              <DateTimePicker value={value} mode="date" display="compact" onValueChange={(_, d) => merge("date", d)} />
-              <DateTimePicker value={value} mode="time" display="compact" onValueChange={(_, d) => merge("time", d)} />
-            </View>
-          </>
-        ) : (
-          <>
-            <Pressable
-              onPress={() => setAndroidMode("date")}
-              accessibilityRole="button"
-              accessibilityLabel={`Date, ${value.toLocaleDateString()}. Change`}
-              style={styles.androidButton}
-            >
-              <Ionicons name="calendar-outline" size={18} color={iconColor} />
-              <AppText variant="bodyMedium">{value.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</AppText>
-            </Pressable>
-            <Pressable
-              onPress={() => setAndroidMode("time")}
-              accessibilityRole="button"
-              accessibilityLabel={`Time, ${value.toLocaleTimeString()}. Change`}
-              style={styles.androidButton}
-            >
-              <Ionicons name="time-outline" size={18} color={iconColor} />
-              <AppText variant="bodyMedium">{value.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</AppText>
-            </Pressable>
-          </>
-        )}
-      </View>
-      {Platform.OS === "android" && androidMode && (
-        <DateTimePicker
-          value={value}
-          mode={androidMode}
-          onValueChange={(_, d) => merge(androidMode, d)}
-          onDismiss={() => setAndroidMode(null)}
+      <View style={styles.row}>
+        <Pill
+          icon="calendar-outline"
+          text={value.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+          a11y={`Date, ${value.toLocaleDateString(undefined, { dateStyle: "full" })}. Change`}
+          active={open === "date"}
+          tint={iconColor}
+          onPress={() => toggle("date")}
         />
+        <Pill
+          icon="time-outline"
+          text={formatTimeParts({ hour: value.getHours(), minute: value.getMinutes() })}
+          a11y={`Time, ${formatTimeParts({ hour: value.getHours(), minute: value.getMinutes() })}. Change`}
+          active={open === "time"}
+          tint={iconColor}
+          onPress={() => toggle("time")}
+        />
+      </View>
+
+      {open === "date" && (
+        <Animated.View entering={FadeIn.duration(150)} style={[styles.panel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <DatePanel
+            value={value}
+            onChange={(day) => {
+              onChange(withCalendarDay(value, day));
+              setOpen(null);
+            }}
+          />
+        </Animated.View>
+      )}
+
+      {open === "time" && (
+        <Animated.View entering={FadeIn.duration(150)} style={[styles.panel, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <TimePanel hour={value.getHours()} minute={value.getMinutes()} onChange={(hour, minute) => onChange(withClockTime(value, { hour, minute }))} />
+          <Pressable onPress={() => setOpen(null)} accessibilityRole="button" accessibilityLabel="Done choosing time" style={styles.done}>
+            <AppText variant="bodyMedium" color="accent" weight="semibold">
+              Done
+            </AppText>
+          </Pressable>
+        </Animated.View>
       )}
     </View>
   );
 }
 
+function Pill({ icon, text, a11y, active, tint, onPress }: { icon: keyof typeof Ionicons.glyphMap; text: string; a11y: string; active: boolean; tint: string; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      accessibilityState={{ expanded: active }}
+      style={({ pressed }) => [
+        styles.pill,
+        { backgroundColor: theme.colors.surface, borderColor: active ? theme.colors.accent : theme.colors.border },
+        pressed && { opacity: 0.8 },
+      ]}
+    >
+      <Ionicons name={icon} size={18} color={tint} />
+      <AppText variant="bodyMedium">{text}</AppText>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   label: { marginBottom: 8, marginLeft: 2 },
-  box: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    minHeight: 52,
-    borderWidth: 1.5,
-    borderRadius: 14,
-    borderCurve: "continuous",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  pickers: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: -4 },
-  androidButton: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingRight: 14, minHeight: 44 },
+  row: { flexDirection: "row", gap: 10 },
+  pill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 52, borderWidth: 1.5, borderRadius: 14, borderCurve: "continuous", paddingHorizontal: 12 },
+  panel: { marginTop: 10, borderWidth: 1.5, borderRadius: 14, borderCurve: "continuous", padding: 12 },
+  done: { alignSelf: "flex-end", minHeight: 44, justifyContent: "center", paddingHorizontal: 8, marginTop: 4 },
 });

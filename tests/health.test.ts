@@ -108,3 +108,46 @@ test("timeline merge interleaves meds, visits, meals and exercise by time, and i
   assert.deepEqual(merged.map((e) => e.kind), ["custom", "food", "exercise", "custom"]);
   assert.equal(base.length, 2, "input is not mutated");
 });
+
+// --- in-app time picker maths -----------------------------------------------------------------
+import { formatTimeParts, from12Hour, parseHHMM, shiftMinutes, to12Hour, toHHMM, withCalendarDay, withClockTime } from "../src/lib/timeParts";
+
+test("12-hour conversion round-trips for every hour, including noon and midnight", () => {
+  assert.deepEqual(to12Hour(0), { hour12: 12, pm: false });
+  assert.deepEqual(to12Hour(12), { hour12: 12, pm: true });
+  assert.deepEqual(to12Hour(13), { hour12: 1, pm: true });
+  assert.deepEqual(to12Hour(23), { hour12: 11, pm: true });
+  for (let h = 0; h < 24; h++) {
+    const { hour12, pm } = to12Hour(h);
+    assert.equal(from12Hour(hour12, pm), h, `hour ${h}`);
+  }
+  assert.equal(from12Hour(12, false), 0, "12 AM is midnight");
+  assert.equal(from12Hour(12, true), 12, "12 PM is noon");
+});
+
+test("minute nudges carry into the hour and wrap around midnight", () => {
+  assert.deepEqual(shiftMinutes({ hour: 8, minute: 59 }, 1), { hour: 9, minute: 0 });
+  assert.deepEqual(shiftMinutes({ hour: 8, minute: 0 }, -1), { hour: 7, minute: 59 });
+  assert.deepEqual(shiftMinutes({ hour: 23, minute: 59 }, 1), { hour: 0, minute: 0 });
+  assert.deepEqual(shiftMinutes({ hour: 0, minute: 0 }, -1), { hour: 23, minute: 59 });
+  assert.deepEqual(shiftMinutes({ hour: 10, minute: 30 }, 0), { hour: 10, minute: 30 });
+});
+
+test("time text is stable regardless of locale, and matches the stored HH:MM form", () => {
+  assert.equal(formatTimeParts({ hour: 0, minute: 5 }), "12:05 AM");
+  assert.equal(formatTimeParts({ hour: 12, minute: 0 }), "12:00 PM");
+  assert.equal(formatTimeParts({ hour: 20, minute: 45 }), "8:45 PM");
+  assert.deepEqual(parseHHMM("08:00"), { hour: 8, minute: 0 });
+  assert.equal(toHHMM({ hour: 8, minute: 5 }), "08:05");
+  assert.equal(toHHMM(parseHHMM("20:30")), "20:30");
+  assert.deepEqual(parseHHMM("garbage"), { hour: 0, minute: 0 });
+});
+
+test("changing the date keeps the time and changing the time keeps the date", () => {
+  const base = local(2026, 9, 25, 14, 30);
+  const movedDay = withCalendarDay(base, local(2026, 10, 3, 0, 0));
+  assert.deepEqual([movedDay.getFullYear(), movedDay.getMonth(), movedDay.getDate(), movedDay.getHours(), movedDay.getMinutes()], [2026, 9, 3, 14, 30]);
+  const movedTime = withClockTime(base, { hour: 7, minute: 5 });
+  assert.deepEqual([movedTime.getDate(), movedTime.getHours(), movedTime.getMinutes(), movedTime.getSeconds()], [25, 7, 5, 0]);
+  assert.equal(base.getHours(), 14, "the original is not mutated");
+});
