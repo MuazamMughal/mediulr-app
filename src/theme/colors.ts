@@ -48,6 +48,10 @@ const light = {
   nutritionSoft: "#E3F1E7",
   exercise: "#6B655D",
   exerciseSoft: "#EEEAE3",
+
+  // Custom reminders: the palette's deeper orange (told apart from medication by its bell icon and check circle).
+  reminder: "#C75F26",
+  reminderSoft: "#FCE6D4",
 } as const;
 
 const dark = {
@@ -85,6 +89,9 @@ const dark = {
   nutritionSoft: "#1E3226",
   exercise: "#B4AEA3",
   exerciseSoft: "#2E2B27",
+
+  reminder: "#FBB27E",
+  reminderSoft: "#3D2A1C",
 } as const;
 
 export type Colors = { [K in keyof typeof light]: string };

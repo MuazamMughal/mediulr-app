@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
-import { ACTION, DOSE_CATEGORY, ESCALATE_CATEGORY, SNOOZE_MINUTES, isDoseNotificationId, isSnoozeId } from "./actions";
+import { ACTION, DOSE_CATEGORY, ESCALATE_CATEGORY, REMINDER_CATEGORY, SNOOZE_MINUTES, isDoseNotificationId, isSnoozeId } from "./actions";
+import { getI18n } from "../../i18n";
 
 /**
  * expo-notifications throws synchronously in Expo Go on Android (SDK 53+ dropped
@@ -14,13 +15,23 @@ let cached: NotificationsModule | null | undefined;
 
 /** Registers the Taken / Snooze / Skip buttons. Buttons that don't open the app let a dose be answered from the lock screen. */
 async function registerActionCategories(Notifications: NotificationsModule): Promise<void> {
-  const take = { identifier: ACTION.take, buttonTitle: "Taken", options: { opensAppToForeground: false } };
-  const skip = { identifier: ACTION.skip, buttonTitle: "Skip", options: { opensAppToForeground: false, isDestructive: true } };
-  const snooze = { identifier: ACTION.snooze, buttonTitle: `Snooze ${SNOOZE_MINUTES} min`, options: { opensAppToForeground: false } };
+  const { t } = getI18n();
+  const take = { identifier: ACTION.take, buttonTitle: t("notif.actionTaken"), options: { opensAppToForeground: false } };
+  const skip = { identifier: ACTION.skip, buttonTitle: t("notif.actionSkip"), options: { opensAppToForeground: false, isDestructive: true } };
+  const snooze = { identifier: ACTION.snooze, buttonTitle: t("notif.actionSnooze", { minutes: SNOOZE_MINUTES }), options: { opensAppToForeground: false } };
   // Telling a guardian opens a message, so that one button brings the app forward.
-  const tell = { identifier: ACTION.tell, buttonTitle: "Tell guardian", options: { opensAppToForeground: true } };
+  const tell = { identifier: ACTION.tell, buttonTitle: t("notif.actionTell"), options: { opensAppToForeground: true } };
+  // A custom reminder is "done", not "taken" (same button id, different wording).
+  const done = { identifier: ACTION.take, buttonTitle: t("notif.actionDone"), options: { opensAppToForeground: false } };
   await Notifications.setNotificationCategoryAsync(DOSE_CATEGORY, [take, snooze, skip]);
   await Notifications.setNotificationCategoryAsync(ESCALATE_CATEGORY, [take, tell, skip]);
+  await Notifications.setNotificationCategoryAsync(REMINDER_CATEGORY, [done, snooze]);
+}
+
+/** Re-registers the buttons so their labels follow a language change. */
+export async function refreshActionCategories(): Promise<void> {
+  const Notifications = await getNotifications();
+  if (Notifications) await registerActionCategories(Notifications).catch(() => undefined);
 }
 
 export async function getNotifications(): Promise<NotificationsModule | null> {

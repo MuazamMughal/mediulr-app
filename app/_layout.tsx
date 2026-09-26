@@ -17,6 +17,7 @@ import { cancelAllReminders } from "../src/features/notifications/scheduleNotifi
 import { doseOutbox } from "../src/features/offline/doseOutbox";
 import { useNotificationActions } from "../src/features/notifications/useNotificationActions";
 import { supabase } from "../src/lib/supabase";
+import { setSharedQueryClient } from "../src/lib/queryClientRef";
 
 // Expo Go on SDK 53+ dropped notification support and logs a loud error about it on
 // every import — src/features/notifications already catches this and degrades gracefully,
@@ -27,13 +28,14 @@ const CACHE_MAX_AGE = 3 * 24 * 3600_000;
 
 // Cached data must outlive the in-memory default (5 minutes) or it would be discarded before it could be saved.
 const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: CACHE_MAX_AGE } } });
+setSharedQueryClient(queryClient);
 
 /**
  * A copy of today's schedule is kept on the phone so the app opens (and shows what's due) with no signal.
  * Only the schedule itself is saved — profiles, medications, visits and the calendar — never food, exercise or
  * guardians' phone numbers. It is wiped on sign-out, and dropped after three days.
  */
-const CACHED_QUERIES = new Set(["profiles", "medications", "appointments", "calendarEvents"]);
+const CACHED_QUERIES = new Set(["profiles", "medications", "appointments", "calendarEvents", "customReminders"]);
 const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: "mediulr:query-cache", throttleTime: 1000 });
 
 /** When anyone signs out, drop every cached query and scheduled reminder so the next person never sees or hears the last one's data. */
@@ -112,6 +114,15 @@ function Navigation() {
       />
       <Stack.Screen
         name="guardian/[id]"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
+      <Stack.Screen name="reminders" options={{ title: "Reminders" }} />
+      <Stack.Screen
+        name="reminder/new"
+        options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
+      />
+      <Stack.Screen
+        name="reminder/[id]"
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
       <Stack.Screen

@@ -4,6 +4,8 @@ import { addDays, endOfLocalDay, startOfLocalDay } from "../../lib/dates";
 import { listFoodTimesInRange } from "../nutrition/api";
 import { listExerciseTimesInRange } from "../exercise/api";
 import { buildMonthLogs, type DayLogs } from "./logic";
+import { useReminders } from "../reminders/useReminders";
+import { reminderOccurrences } from "../reminders/schedule";
 
 /**
  * Per-day meal/activity markers for the month grid. Two light timestamp-only queries (one per table) so a
@@ -29,8 +31,13 @@ export function useMonthLogs(profileId: string | undefined, month: Date): Record
     retry: 1,
   });
 
-  return useMemo(
-    () => (food.data || exercise.data ? buildMonthLogs(food.data ?? [], exercise.data ?? []) : undefined),
-    [food.data, exercise.data]
-  );
+  const reminders = useReminders(profileId);
+  const rs = rangeStart.getTime();
+  const re = rangeEnd.getTime();
+
+  return useMemo(() => {
+    if (!food.data && !exercise.data && !reminders.data) return undefined;
+    const reminderTimes = (reminders.data ?? []).flatMap((r) => reminderOccurrences(r, new Date(rs), new Date(re)).map((d) => d.toISOString()));
+    return buildMonthLogs(food.data ?? [], exercise.data ?? [], reminderTimes);
+  }, [food.data, exercise.data, reminders.data, rs, re]);
 }

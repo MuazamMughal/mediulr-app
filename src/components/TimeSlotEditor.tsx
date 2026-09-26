@@ -13,7 +13,7 @@ import { formatTimeParts, parseHHMM, toHHMM } from "../lib/timeParts";
  * controlled by the caller (the medication form resizes `times` when the frequency chip changes); this component
  * only edits values.
  */
-export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange: (times: string[]) => void }) {
+export function TimeSlotEditor({ times, onChange, rowLabel }: { times: string[]; onChange: (times: string[]) => void; rowLabel?: (index: number) => string }) {
   const theme = useTheme();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -33,7 +33,7 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
             <Pressable
               onPress={() => setEditingIndex(isEditing ? null : index)}
               accessibilityRole="button"
-              accessibilityLabel={`Dose ${index + 1}, ${formatTimeParts(parts)}. Change time`}
+              accessibilityLabel={`${rowLabel ? rowLabel(index) : `Dose ${index + 1}`}, ${formatTimeParts(parts)}. Change time`}
               accessibilityState={{ expanded: isEditing }}
               style={({ pressed }) => [
                 styles.row,
@@ -45,7 +45,7 @@ export function TimeSlotEditor({ times, onChange }: { times: string[]; onChange:
                 <Ionicons name="time-outline" size={15} color={theme.colors.medication} />
               </View>
               <AppText variant="bodySmall" color="secondary" style={{ flex: 1 }}>
-                Dose {index + 1}
+                {rowLabel ? rowLabel(index) : `Dose ${index + 1}`}
               </AppText>
               <AppText variant="bodyMedium" weight="semibold">
                 {formatTimeParts(parts)}

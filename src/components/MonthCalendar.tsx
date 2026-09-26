@@ -32,7 +32,8 @@ function describeDay(meta: CalendarDayMetadata, o: DayOverview | undefined, l?: 
   if (o?.visits) parts.push(`${o.visits} doctor ${o.visits === 1 ? "visit" : "visits"}`);
   if (l?.meals) parts.push(`${l.meals} ${l.meals === 1 ? "meal" : "meals"} logged`);
   if (l?.activities) parts.push(`${l.activities} ${l.activities === 1 ? "activity" : "activities"} logged`);
-  if (o && !o.doses && !o.visits && !l?.meals && !l?.activities) parts.push("nothing scheduled");
+  if (l?.reminders) parts.push(`${l.reminders} ${l.reminders === 1 ? "reminder" : "reminders"}`);
+  if (o && !o.doses && !o.visits && !l?.meals && !l?.activities && !l?.reminders) parts.push("nothing scheduled");
   return parts.join(", ");
 }
 
@@ -143,6 +144,7 @@ export function MonthCalendar({ selected, onSelect, month, onMonthChange, expand
           <LegendDot color={theme.colors.visit} label="Doctor visit" />
           <LegendDot color={theme.colors.nutrition} label="Food" hollow />
           <LegendDot color={theme.colors.exercise} label="Exercise" hollow />
+          <LegendDot color={theme.colors.reminder} label="Reminder" hollow />
         </View>
       )}
     </Animated.View>
@@ -220,6 +222,7 @@ const DayCell = memo(function DayCell({
         {visits > 0 && <View style={[styles.dot, { backgroundColor: theme.colors.visit }]} />}
         {(logs?.meals ?? 0) > 0 && <View style={[styles.dot, styles.ring, { borderColor: theme.colors.nutrition }]} />}
         {(logs?.activities ?? 0) > 0 && <View style={[styles.dot, styles.ring, { borderColor: theme.colors.exercise }]} />}
+        {(logs?.reminders ?? 0) > 0 && <View style={[styles.dot, styles.ring, { borderColor: theme.colors.reminder }]} />}
       </View>
     </Pressable>
   );

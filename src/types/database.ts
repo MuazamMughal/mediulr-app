@@ -1,5 +1,5 @@
 /**
- * Hand-written stand-in matching supabase/migrations/0001_init.sql (+ 0003_nutrition_exercise.sql, 0004_guardians.sql).
+ * Hand-written stand-in matching supabase/migrations/0001_init.sql (+ 0003_nutrition_exercise.sql, 0004_guardians.sql, 0006_custom_reminders.sql).
  * Once a real Supabase project exists, regenerate with:
  *   npx supabase gen types typescript --project-id <id> > src/types/database.ts
  */
@@ -191,6 +191,38 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["guardians"]["Insert"]>;
+        Relationships: [];
+      };
+      custom_reminders: {
+        Row: {
+          id: string;
+          profile_id: string;
+          title: string;
+          notes: string | null;
+          recurrence_rule: Record<string, unknown>;
+          start_date: string;
+          end_date: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          profile_id: string;
+          title: string;
+          notes?: string | null;
+          recurrence_rule: Record<string, unknown>;
+          start_date: string;
+          end_date?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["custom_reminders"]["Insert"]>;
+        Relationships: [];
+      };
+      reminder_completions: {
+        Row: { reminder_id: string; scheduled_at: string; completed_at: string };
+        Insert: { reminder_id: string; scheduled_at: string; completed_at?: string };
+        Update: Partial<Database["public"]["Tables"]["reminder_completions"]["Insert"]>;
         Relationships: [];
       };
       reminders: {

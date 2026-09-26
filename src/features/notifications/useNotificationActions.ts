@@ -1,5 +1,8 @@
 import { useEffect } from "react";
-import { doseActionFrom, parseDoseData, SNOOZE_MINUTES, ACTION } from "./actions";
+import { doseActionFrom, parseDoseData, parseReminderData, SNOOZE_MINUTES, ACTION } from "./actions";
+import { getI18n } from "../../i18n";
+import { completeReminder } from "../reminders/api";
+import { getSharedQueryClient } from "../../lib/queryClientRef";
 import { cancelDoseReminders, getNotifications, scheduleReminder } from "./scheduleNotifications";
 import { submitDose } from "../offline/submitDose";
 import { listGuardians } from "../guardians/api";
@@ -18,7 +21,34 @@ async function handleResponse(response: Response): Promise<void> {
   handled.add(key);
 
   const action = doseActionFrom(response.actionIdentifier);
-  const data = parseDoseData(response.notification.request.content.data);
+  const content = response.notification.request.content.data;
+
+  // A custom reminder: Done ticks the occurrence off, Snooze schedules another reminder.
+  const reminder = parseReminderData(content);
+  if (action && reminder) {
+    const { t } = getI18n();
+    if (action === ACTION.take) {
+      await cancelDoseReminders(reminder.reminderId, reminder.scheduledAt);
+      try {
+        await completeReminder(reminder.reminderId, reminder.scheduledAt);
+        getSharedQueryClient()?.invalidateQueries({ queryKey: ["customReminders"] });
+      } catch (err) {
+        console.warn("Couldn't save the completed reminder", err);
+      }
+    } else if (action === ACTION.snooze) {
+      await scheduleReminder({
+        id: `snooze:${reminder.reminderId}:${new Date(reminder.scheduledAt).getTime()}:${Date.now()}`,
+        title: reminder.title,
+        body: `${t("notif.snoozed")}${reminder.patientName ? ` · ${reminder.patientName}` : ""}`,
+        fireAt: new Date(Date.now() + SNOOZE_MINUTES * 60_000),
+        category: "reminder",
+        data: { kind: "reminder", ...reminder },
+      });
+    }
+    return;
+  }
+
+  const data = parseDoseData(content);
   if (!action || !data) return; // a plain tap just opens the app
 
   const dose = { medicationId: data.medicationId, scheduledAt: data.scheduledAt };

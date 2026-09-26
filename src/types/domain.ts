@@ -62,6 +62,25 @@ export interface Guardian {
   notifyOnMissed: boolean;
 }
 
+/** Anything to be reminded about that isn't a medication or a doctor visit. */
+export interface CustomReminder {
+  id: string;
+  profileId: string;
+  title: string;
+  notes: string | null;
+  recurrenceRule: RecurrenceRule;
+  startDate: string;
+  endDate: string | null;
+  createdAt: string;
+}
+
+/** One ticked-off occurrence of a custom reminder. */
+export interface ReminderCompletion {
+  reminderId: string;
+  scheduledAt: string;
+  completedAt: string;
+}
+
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "other";
 
 /** What the user ate and when. A log entry, not a nutrition record — no calories or health judgements. */
@@ -106,6 +125,7 @@ export interface ExerciseEntry {
 export type CalendarEvent =
   | { kind: "medication"; at: string; medication: Medication; dose: DoseLog }
   | { kind: "appointment"; at: string; appointment: Appointment }
+  | { kind: "reminder"; at: string; reminder: CustomReminder; done: boolean }
   | { kind: "food"; at: string; food: FoodEntry }
   | { kind: "exercise"; at: string; exercise: ExerciseEntry }
   | { kind: "custom"; at: string; title: string; notes: string | null };

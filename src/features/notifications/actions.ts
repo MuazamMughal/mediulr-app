@@ -2,6 +2,7 @@
 
 export const DOSE_CATEGORY = "dose";
 export const ESCALATE_CATEGORY = "dose_escalate";
+export const REMINDER_CATEGORY = "reminder";
 export const SNOOZE_MINUTES = 10;
 
 export const ACTION = { take: "take", snooze: "snooze", skip: "skip", tell: "tell" } as const;
@@ -46,7 +47,30 @@ export function doseActionFrom(actionIdentifier: string): DoseAction | null {
 /** ids of every notification belonging to one dose: its reminder, its follow-ups and any snoozes. */
 export function isDoseNotificationId(id: string, medicationId: string, scheduledAtMs: number): boolean {
   const base = `${medicationId}:${scheduledAtMs}`;
-  return id === `dose:${base}` || id.startsWith(`nag:${base}:`) || id.startsWith(`snooze:${base}:`);
+  // Custom reminders share the scheme: `custom:<reminderId>:<ms>` and their snoozes.
+  return id === `dose:${base}` || id === `custom:${base}` || id.startsWith(`nag:${base}:`) || id.startsWith(`snooze:${base}:`);
 }
 
 export const isSnoozeId = (id: string) => id.startsWith("snooze:");
+
+/** What a custom-reminder notification carries so a "Done" / "Snooze" tap knows which occurrence it means. */
+export interface ReminderNotificationData {
+  reminderId: string;
+  scheduledAt: string;
+  profileId: string;
+  title: string;
+  patientName: string | null;
+}
+
+export function parseReminderData(data: unknown): ReminderNotificationData | null {
+  if (!data || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+  if (d.kind !== "reminder") return null;
+  const text = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
+  const reminderId = text(d.reminderId);
+  const scheduledAt = text(d.scheduledAt);
+  const profileId = text(d.profileId);
+  const title = text(d.title);
+  if (!reminderId || !scheduledAt || !profileId || !title || Number.isNaN(new Date(scheduledAt).getTime())) return null;
+  return { reminderId, scheduledAt, profileId, title, patientName: text(d.patientName) };
+}

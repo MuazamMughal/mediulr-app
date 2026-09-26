@@ -78,7 +78,7 @@ test("plural messages always come as a complete _one/_other pair", () => {
   for (const [name, dict] of [["en", en], ["ur", ur]] as const) {
     const keys = Object.keys(dict);
     for (const k of keys.filter((x) => x.endsWith("_one"))) assert.ok(keys.includes(k.replace(/_one$/, "_other")), `${name}: ${k} has no _other`);
-    for (const k of keys.filter((x) => x.endsWith("_other"))) assert.ok(keys.includes(k.replace(/_other$/, "_one")) || name === "ur", `${name}: ${k} has no _one`);
+    for (const k of keys.filter((x) => x.endsWith("_other"))) assert.ok(keys.includes(k.replace(/_other$/, "_one")), `${name}: ${k} has no _one`);
   }
 });
 

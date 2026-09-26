@@ -14,6 +14,8 @@ interface DateTimeFieldProps {
   onChange: (next: Date) => void;
   /** Icon tint; defaults to the accent. */
   tint?: string;
+  /** "date" hides the time button (for "starts on / ends on" fields). */
+  mode?: "datetime" | "date";
 }
 
 type Open = "date" | "time" | null;
@@ -22,7 +24,7 @@ type Open = "date" | "time" | null;
  * Date and time as two always-visible buttons; tapping one opens its picker right underneath (inline, in the page —
  * never a system dialog), and tapping it again or "Done" closes it. Choosing a date closes it straight away.
  */
-export function DateTimeField({ label = "When", value, onChange, tint }: DateTimeFieldProps) {
+export function DateTimeField({ label = "When", value, onChange, tint, mode = "datetime" }: DateTimeFieldProps) {
   const theme = useTheme();
   const [open, setOpen] = useState<Open>(null);
   const iconColor = tint ?? theme.colors.accent;
@@ -43,6 +45,7 @@ export function DateTimeField({ label = "When", value, onChange, tint }: DateTim
           tint={iconColor}
           onPress={() => toggle("date")}
         />
+        {mode === "datetime" && (
         <Pill
           icon="time-outline"
           text={formatTimeParts({ hour: value.getHours(), minute: value.getMinutes() })}
@@ -51,6 +54,7 @@ export function DateTimeField({ label = "When", value, onChange, tint }: DateTim
           tint={iconColor}
           onPress={() => toggle("time")}
         />
+        )}
       </View>
 
       {open === "date" && (

@@ -4,6 +4,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from "react-native-reanim
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
 import { DoseCheckButton } from "./DoseCheckButton";
+import { useI18n } from "../i18n/LocaleProvider";
 import { mealIcon, mealLabel } from "../features/nutrition/constants";
 import { exerciseIcon, intensityLabel } from "../features/exercise/constants";
 import { exerciseTitle, formatDuration } from "../features/exercise/logic";
@@ -16,6 +17,8 @@ interface TimelineItemProps {
   /** When set, a missed dose offers this action (e.g. "Tell Mom"). */
   tellGuardianLabel?: string;
   onTellGuardian?: (medication: Medication, scheduledAt: string) => void;
+  /** Tick or untick a custom reminder's occurrence. */
+  onToggleReminder?: (reminderId: string, scheduledAt: string, done: boolean) => void;
   onPress?: () => void;
 }
 
@@ -23,8 +26,9 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, onTellGuardian, onPress }: TimelineItemProps) {
+export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, onTellGuardian, onToggleReminder, onPress }: TimelineItemProps) {
   const theme = useTheme();
+  const { t, fmt } = useI18n();
   const avatarSize = theme.simple ? styles.avatarSimple : null;
 
   if (event.kind === "medication") {
@@ -113,6 +117,43 @@ export function TimelineItem({ event, onMarkTaken, onSkip, tellGuardianLabel, on
           </AppText>
         </View>
       </Pressable>
+    );
+  }
+
+  if (event.kind === "reminder") {
+    const { reminder, done } = event;
+    const overdue = !done && new Date(event.at).getTime() < Date.now();
+    return (
+      <Animated.View entering={FadeIn.duration(220)}>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`${reminder.title}, ${fmt.time(new Date(event.at))}${done ? `, ${t("reminders.isDone")}` : overdue ? `, ${t("reminders.overdue")}` : ""}`}
+          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        >
+          <View style={[styles.avatar, avatarSize, { backgroundColor: done ? theme.colors.surfaceSunken : theme.colors.reminderSoft }]}>
+            <Ionicons name="notifications" size={17} color={done ? theme.colors.textTertiary : theme.colors.reminder} />
+          </View>
+          <View style={styles.body}>
+            <AppText variant="bodyMedium" weight="semibold" style={done ? styles.doneText : undefined}>
+              {reminder.title}
+            </AppText>
+            <AppText variant="caption" color={overdue ? "warning" : "tertiary"} weight={overdue ? "semibold" : undefined} style={styles.subtitle}>
+              {overdue ? `${t("reminders.overdue")} · ` : ""}
+              {fmt.time(new Date(event.at))}
+              {reminder.notes ? ` · ${reminder.notes}` : ""}
+            </AppText>
+          </View>
+          <DoseCheckButton
+            done={done}
+            taken={done}
+            missed={overdue}
+            undoable
+            labels={{ mark: t("reminders.markDone"), done: t("reminders.isDone"), skipped: t("reminders.isDone"), undo: t("reminders.undo") }}
+            onPress={() => onToggleReminder?.(reminder.id, event.at, !done)}
+          />
+        </Pressable>
+      </Animated.View>
     );
   }
 

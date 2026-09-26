@@ -31,6 +31,8 @@ import { useAppointments } from "../../src/features/appointments/useAppointments
 import { useFoodForRange, useHasAnyFood } from "../../src/features/nutrition/useFood";
 import { useExerciseForRange, useHasAnyExercise } from "../../src/features/exercise/useExercise";
 import { useMonthLogs } from "../../src/features/lifestyle/useMonthLogs";
+import { useReminderEvents, useReminders, useToggleReminderDone } from "../../src/features/reminders/useReminders";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 import { useGuardians } from "../../src/features/guardians/useGuardians";
 import { alertGuardians, tellLabel } from "../../src/features/guardians/logic";
 import { tellGuardians } from "../../src/features/guardians/tellGuardians";
@@ -71,6 +73,11 @@ export default function CalendarScreen() {
   const { data: foodEntries, isLoading: foodLoading } = useFoodForRange(profile?.id, rangeStart, rangeEnd);
   const { data: exerciseEntries, isLoading: exerciseLoading } = useExerciseForRange(profile?.id, rangeStart, rangeEnd);
   const monthLogs = useMonthLogs(profile?.id, month);
+  const { t, tn } = useI18n();
+  // Custom reminders load on their own too, so they can never hide doses or visits.
+  const reminderEvents = useReminderEvents(profile?.id, rangeStart, rangeEnd);
+  const allReminders = useReminders(profile?.id);
+  const toggleReminder = useToggleReminderDone();
   const anyFood = useHasAnyFood(profile?.id);
   const anyExercise = useHasAnyExercise(profile?.id);
   // A failed lookup counts as "nothing logged" so an unreachable new table can never hide the brand-new-account screen.
@@ -79,8 +86,8 @@ export default function CalendarScreen() {
   // Answers still waiting to sync show as already answered, so tapping "Taken" feels instant with or without signal.
   const pendingDoses = usePendingDoses();
   const events = useMemo<CalendarEvent[] | undefined>(
-    () => (calendarEvents ? applyPendingDoses(mergeTimeline(calendarEvents, foodEntries, exerciseEntries), pendingDoses) : undefined),
-    [calendarEvents, foodEntries, exerciseEntries, pendingDoses]
+    () => (calendarEvents ? applyPendingDoses(mergeTimeline(calendarEvents, foodEntries, exerciseEntries, reminderEvents.events), pendingDoses) : undefined),
+    [calendarEvents, foodEntries, exerciseEntries, reminderEvents.events, pendingDoses]
   );
   const { data: overview } = useMonthOverview(profile?.id, month);
   const { data: allMedications, isLoading: medsLoading } = useAllMedications(profile?.id);
@@ -92,9 +99,9 @@ export default function CalendarScreen() {
   const rowInputs = useMemo(() => ({ toTell, isViewingSelf, patient: profile?.displayName }), [toTell, isViewingSelf, profile?.displayName]);
 
   // "Loading" here is only the first load. Switching days keeps the calendar on screen and just skeletons the timeline.
-  const noMedsOrVisits = (allMedications?.length ?? 0) === 0 && (allVisits?.length ?? 0) === 0;
+  const noMedsOrVisits = (allMedications?.length ?? 0) === 0 && (allVisits?.length ?? 0) === 0 && (allReminders.isError || (allReminders.data?.length ?? 0) === 0);
   // Only wait on the meal/exercise lookups when they could change the answer, so the welcome screen never flashes the calendar first.
-  const isLoading = !profile || medsLoading || visitsLoading || (noMedsOrVisits && (anyFood.isLoading || anyExercise.isLoading));
+  const isLoading = !profile || medsLoading || visitsLoading || (noMedsOrVisits && (anyFood.isLoading || anyExercise.isLoading || allReminders.isLoading));
   // Brand new = no medications, no visits, and no meals or activity either.
   const hasNothingYet = !isLoading && noMedsOrVisits && noLogsYet;
 
@@ -151,10 +158,18 @@ export default function CalendarScreen() {
     cancelDoseReminders(medicationId, scheduledAt);
   }
 
+  function handleToggleReminder(reminderId: string, scheduledAt: string, done: boolean) {
+    Haptics.selectionAsync().catch(() => undefined);
+    if (done) cancelDoseReminders(reminderId, scheduledAt); // ticked off: its notification must not fire
+    toggleReminder.mutate({ reminderId, scheduledAt, done }, { onError: (err) => Alert.alert(t("common.couldntUpdate"), friendlyError(err)) });
+  }
+
+  const reminderCount = reminderEvents.events?.length ?? 0;
   const daySummary = [
     totalCount > 0 ? `${totalCount} ${totalCount === 1 ? "dose" : "doses"}` : null,
     visitCount > 0 ? `${visitCount} doctor ${visitCount === 1 ? "visit" : "visits"}` : null,
     ...summarizeLogs(foodEntries ?? [], exerciseEntries ?? []),
+    reminderCount > 0 ? tn("reminders.summary", reminderCount) : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -191,6 +206,7 @@ export default function CalendarScreen() {
         </View>
         {!theme.simple && (
           <>
+        <QuickLogButton icon="notifications-outline" label={t("reminders.addOnHome")} tint={theme.colors.reminder} onPress={() => router.push(`/reminder/new?date=${toLocalDateString(day)}`)} />
         <QuickLogButton icon="restaurant-outline" label="Add food" tint={theme.colors.nutrition} onPress={() => router.push(`/food/new?date=${toLocalDateString(day)}`)} />
         <QuickLogButton icon="walk-outline" label="Add exercise" tint={theme.colors.exercise} onPress={() => router.push(`/exercise/new?date=${toLocalDateString(day)}`)} />
           </>
@@ -274,6 +290,7 @@ export default function CalendarScreen() {
                 event={event}
                 onMarkTaken={(id, at) => handleDoseAction(id, at, "taken")}
                 onSkip={(id, at) => handleDoseAction(id, at, "skipped")}
+                onToggleReminder={handleToggleReminder}
                 tellGuardianLabel={toTell.length > 0 ? tellLabel(toTell) : undefined}
                 onTellGuardian={(medication, at) =>
                   tellGuardians(toTell, {
@@ -288,6 +305,8 @@ export default function CalendarScreen() {
                     ? () => router.push(`/medication/${event.medication.id}`)
                     : event.kind === "appointment"
                       ? () => router.push(`/appointment/${event.appointment.id}`)
+                      : event.kind === "reminder"
+                        ? () => router.push(`/reminder/${event.reminder.id}`)
                       : event.kind === "food"
                         ? () => router.push(`/food/${event.food.id}`)
                         : event.kind === "exercise"

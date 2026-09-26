@@ -14,6 +14,10 @@ export function dosesPerDay(rule: RecurrenceRule): number {
       return rule.every > 0 ? 24 / rule.every : 0;
     case "once":
       return 0;
+    case "monthly":
+      return rule.at.length / 30;
+    case "every_n_days":
+      return rule.every > 0 ? rule.at.length / rule.every : 0;
   }
 }
 

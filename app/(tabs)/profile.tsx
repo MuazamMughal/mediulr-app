@@ -11,6 +11,7 @@ import { Divider } from "../../src/components/Divider";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useAddDependentProfile, useProfiles } from "../../src/features/profile/useProfiles";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
+import { useI18n } from "../../src/i18n/LocaleProvider";
 
 function NavRow({
   icon,
@@ -42,6 +43,7 @@ function NavRow({
 export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { t } = useI18n();
   const { data: profiles } = useProfiles();
   const { profile: activeProfile, setActiveProfileId } = useActiveProfile();
   const addDependent = useAddDependentProfile();
@@ -149,6 +151,14 @@ export default function ProfileScreen() {
               ACCOUNT
             </AppText>
             <AppCard padded={false}>
+              <NavRow
+                icon="notifications"
+                iconColor={theme.colors.reminder}
+                iconBg={theme.colors.reminderSoft}
+                label={t("reminders.title")}
+                onPress={() => router.push("/reminders")}
+              />
+              <Divider style={{ marginLeft: 68 }} />
               <NavRow
                 icon="sparkles"
                 iconColor={theme.colors.accent}

@@ -14,11 +14,15 @@ interface DoseCheckButtonProps {
   done: boolean; // taken or skipped — anything that's no longer actionable
   taken: boolean;
   missed?: boolean; // scheduled time has passed and it's still pending
+  /** A custom reminder's tick can be undone; a dose answer can't. */
+  undoable?: boolean;
+  /** Wording for screen readers. */
+  labels?: { mark: string; done: string; skipped: string; undo?: string };
   onPress: () => void;
 }
 
 /** The circular check control on a medication row — the app's single most-repeated interaction. */
-export function DoseCheckButton({ done, taken, missed = false, onPress }: DoseCheckButtonProps) {
+export function DoseCheckButton({ done, taken, missed = false, undoable = false, labels, onPress }: DoseCheckButtonProps) {
   const theme = useTheme();
   const scale = useSharedValue(1);
 
@@ -45,10 +49,10 @@ export function DoseCheckButton({ done, taken, missed = false, onPress }: DoseCh
     <Pressable
       onPress={handlePress}
       hitSlop={8}
-      disabled={done}
+      disabled={done && !undoable}
       accessibilityRole="button"
-      accessibilityLabel={taken ? "Taken" : done ? "Skipped" : "Mark taken"}
-      accessibilityState={{ disabled: done }}
+      accessibilityLabel={undoable && done ? (labels?.undo ?? "Mark not done") : taken ? (labels?.done ?? "Taken") : done ? (labels?.skipped ?? "Skipped") : (labels?.mark ?? "Mark taken")}
+      accessibilityState={{ disabled: done && !undoable, checked: done }}
     >
       <Animated.View style={[styles.circle, theme.simple && styles.circleSimple, { backgroundColor, borderColor }, animatedStyle]}>
         {taken && (

@@ -1,7 +1,9 @@
 import { occurrencesInRange } from "../../lib/recurrence";
 import { isActiveMedication, medicationWindow } from "../medications/schedule";
 import { defaultRefillThreshold } from "../medications/refill";
-import type { Appointment, Medication, Profile } from "../../types/domain";
+import { reminderKey, reminderOccurrences } from "../reminders/schedule";
+import { getI18n, type I18n } from "../../i18n";
+import type { Appointment, CustomReminder, Medication, Profile } from "../../types/domain";
 
 export interface PlannedReminder {
   id: string;
@@ -9,7 +11,7 @@ export interface PlannedReminder {
   body: string;
   fireAt: Date;
   /** Which action buttons the notification carries ("dose": Taken / Snooze / Skip; "dose_escalate": Taken / Tell guardian / Skip). */
-  category?: "dose" | "dose_escalate";
+  category?: "dose" | "dose_escalate" | "reminder";
   /** Round-trips to the app when a button is tapped, so it knows which dose was answered. */
   data?: Record<string, string | null>;
 }
@@ -40,7 +42,13 @@ export function planReminders(args: {
   guardianProfileIds?: Set<string>;
   /** Nudge again after a dose is left unanswered. Off unless asked for. */
   followUps?: boolean;
+  /** The person's custom reminders, and the occurrences already ticked off ("reminderId:epochMs"). */
+  customReminders?: CustomReminder[];
+  completedReminders?: Set<string>;
+  /** Language for the notification text; defaults to the app's current one. */
+  i18n?: I18n;
 }): PlannedReminder[] {
+  const { t } = args.i18n ?? getI18n();
   const now = args.now ?? new Date();
   const horizon = new Date(now.getTime() + REMINDER_HORIZON_DAYS * 24 * HOUR);
   const profileName = new Map(args.profiles.map((p) => [p.id, p.isSelf ? null : p.displayName]));
@@ -108,6 +116,28 @@ export function planReminders(args: {
           });
         });
       }
+    }
+  }
+
+  const completedReminders = args.completedReminders ?? new Set<string>();
+  for (const reminder of args.customReminders ?? []) {
+    for (const at of reminderOccurrences(reminder, now, horizon)) {
+      if (completedReminders.has(reminderKey(reminder.id, at))) continue;
+      reminders.push({
+        id: `custom:${reminder.id}:${at.getTime()}`,
+        title: reminder.title,
+        body: `${reminder.notes?.trim() || t("notif.reminderDue")}${forWhom(reminder.profileId)}`,
+        fireAt: at,
+        category: "reminder",
+        data: {
+          kind: "reminder",
+          reminderId: reminder.id,
+          scheduledAt: at.toISOString(),
+          profileId: reminder.profileId,
+          title: reminder.title,
+          patientName: profileName.get(reminder.profileId) ?? null,
+        },
+      });
     }
   }
 

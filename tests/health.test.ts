@@ -54,8 +54,8 @@ test("month logs group by local day, not UTC day", () => {
   const late = local(2026, 9, 25, 23, 30).toISOString();
   const early = local(2026, 9, 26, 0, 30).toISOString();
   const logs = buildMonthLogs([late, early, early], [late]);
-  assert.deepEqual(logs["2026-09-25"], { meals: 1, activities: 1 });
-  assert.deepEqual(logs["2026-09-26"], { meals: 2, activities: 0 });
+  assert.deepEqual(logs["2026-09-25"], { meals: 1, activities: 1, reminders: 0 });
+  assert.deepEqual(logs["2026-09-26"], { meals: 2, activities: 0, reminders: 0 });
 });
 
 test("day summary is calm and empty when nothing was logged", () => {

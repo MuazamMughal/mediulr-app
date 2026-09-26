@@ -11,6 +11,10 @@ export function describeRecurrence(rule: RecurrenceRule): string {
       return `${rule.days.length} days/week`;
     case "once":
       return "One time";
+    case "monthly":
+      return "Monthly";
+    case "every_n_days":
+      return `Every ${rule.every} days`;
   }
 }
 
@@ -26,6 +30,8 @@ export function describeRecurrenceTimes(rule: RecurrenceRule): string | null {
   switch (rule.type) {
     case "times_per_day":
     case "weekdays":
+    case "monthly":
+    case "every_n_days":
       return rule.at.map(formatTime).join(", ");
     case "once":
       return new Date(rule.at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
