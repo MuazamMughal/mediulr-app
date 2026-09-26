@@ -87,3 +87,11 @@ npx supabase gen types typescript --project-id <your-project-ref> > src/types/da
 4. Point the `subscriptions` table's writes at a RevenueCat webhook → Supabase Edge Function (service-role key, never exposed client-side).
 
 Not needed for local development — only before submitting to the stores.
+
+## Web preview (no phone needed)
+
+```bash
+npx expo start --web
+```
+
+Opens the app in your browser (use the browser's phone-size view for a realistic layout). Screens, forms, the calendar, the time picker, offline queue and confirmation dialogs all work. What doesn't: reminders/notification buttons (need a real build), haptics, and opening the messaging app for "Tell guardian" (the link is built correctly but a browser can't open SMS). Confirmation dialogs use the browser's own OK/Cancel box on web.

@@ -151,3 +151,18 @@ test("changing the date keeps the time and changing the time keeps the date", ()
   assert.deepEqual([movedTime.getDate(), movedTime.getHours(), movedTime.getMinutes(), movedTime.getSeconds()], [25, 7, 5, 0]);
   assert.equal(base.getHours(), 14, "the original is not mutated");
 });
+
+// --- web alert mapping ------------------------------------------------------------------------
+import { pickWebAlertButton, webAlertMessage } from "../src/lib/webAlertLogic";
+
+test("web alerts: OK runs the action button, Cancel runs the cancel button, and the text combines title and message", () => {
+  const cancel = { text: "Cancel", style: "cancel" as const };
+  const del = { text: "Delete", style: "destructive" as const };
+  assert.equal(pickWebAlertButton([cancel, del], true), del);
+  assert.equal(pickWebAlertButton([cancel, del], false), cancel);
+  assert.equal(pickWebAlertButton([del, cancel], true), del, "order doesn't matter");
+  assert.equal(pickWebAlertButton([{ text: "A" }, { text: "B" }], true)?.text, "A");
+  assert.equal(pickWebAlertButton([{ text: "A" }, { text: "B" }], false), undefined, "no cancel button → nothing runs");
+  assert.equal(webAlertMessage("Delete?", "It's permanent."), "Delete?\n\nIt's permanent.");
+  assert.equal(webAlertMessage("Oops"), "Oops");
+});

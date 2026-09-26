@@ -1,3 +1,4 @@
+import "../src/lib/webAlert"; // makes Alert dialogs work on web (no effect on phones)
 import { useEffect } from "react";
 import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
