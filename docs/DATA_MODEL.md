@@ -1,179 +1,215 @@
 # Data model
 
-Postgres (via Supabase). Every table has Row Level Security enabled and scoped to `auth.uid()` (directly, or via `profiles.owner_id` for dependent profiles) — see `supabase/migrations/0001_init.sql`.
+Last reviewed: **2026-09-27**. The SQL files in [supabase/migrations](../supabase/migrations) define the schema; [database.ts](../src/types/database.ts) is a hand-maintained TypeScript representation. This document describes the repository, not the verified state of a remote database.
 
-## Tables
+## Ownership and relationships
 
-### `profiles`
-One row per person tracked in the app — the account holder or a dependent they manage.
+```mermaid
+erDiagram
+  AUTH_USERS ||--o{ PROFILES : owns
+  AUTH_USERS ||--o| SUBSCRIPTIONS : reserved
+  PROFILES ||--o{ MEDICATIONS : tracks
+  MEDICATIONS ||--o{ DOSE_LOGS : answers
+  PROFILES ||--o{ APPOINTMENTS : records
+  PROFILES ||--o{ FOOD_ENTRIES : records
+  PROFILES ||--o{ EXERCISE_ENTRIES : records
+  PROFILES ||--o{ GUARDIANS : contacts
+  PROFILES ||--o{ CUSTOM_REMINDERS : schedules
+  CUSTOM_REMINDERS ||--o{ REMINDER_COMPLETIONS : completes
+```
 
-| Column | Type | Notes |
+All public tables enable Row Level Security. Profile policies check `owner_id = auth.uid()`; child records check ownership through their profile or parent record. Normal users can read their own subscription row but cannot write it. Legacy `reminders` has select/insert/delete policies through its source, with no update policy.
+
+Ownership foreign keys cascade on deletion, except the reserved `guardians.linked_user_id`, which becomes null when its referenced auth user is deleted. Legacy `reminders.source_id` has no foreign key and is handled explicitly by account deletion.
+
+## Migration inventory
+
+| Migration | Main behavior |
+|---|---|
+| `0001_init.sql` | Core tables, policies, self-profile sign-up trigger |
+| `0002_delete_account.sql` | `delete_my_account()` RPC |
+| `0003_nutrition_exercise.sql` | Food/exercise logs and shared `set_updated_at()` trigger function |
+| `0004_guardians.sql` | Guardian contacts and insert limit |
+| `0005_refill_countdown.sql` | Adjust quantity on dose insert/status change |
+| `0006_custom_reminders.sql` | Custom reminders and occurrence completions |
+
+Apply missing migrations in order; ordinary table/trigger creation statements are not universally idempotent. See [Setup](SETUP.md).
+
+## Profiles
+
+One person per row. The sign-up trigger creates a self profile, using auth metadata `display_name` or `Me`. The current sign-up UI does not collect that name; dependent creation collects a name only.
+
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid, PK | |
-| `owner_id` | uuid, FK → `auth.users.id` | The account that manages this profile |
-| `is_self` | boolean | True for the account holder's own profile |
-| `display_name` | text | |
-| `date_of_birth` | date, nullable | |
-| `created_at` | timestamptz | |
+| `id` | uuid PK | Generated UUID |
+| `owner_id` | uuid FK | Required; references `auth.users` |
+| `is_self` | boolean | Required, default false |
+| `display_name` | text | Required |
+| `date_of_birth` | date | Nullable; not exposed by the current add-dependent UI |
+| `created_at` | timestamptz | Required, default now |
 
-### `medications`
-| Column | Type | Notes |
+There is no unique constraint enforcing one self profile per owner, and no current profile edit/delete UI. A dependent does not have a separate login or shared-account permissions.
+
+## Medications
+
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid, PK | |
-| `profile_id` | uuid, FK → `profiles.id` | |
-| `name` | text | |
-| `dosage` | text | e.g. "200mg" |
-| `instructions` | text, nullable | e.g. "with food" |
-| `recurrence_rule` | jsonb | See "Recurrence rule shape" below |
-| `quantity_on_hand` | integer, nullable | For refill reminders |
-| `refill_threshold` | integer, nullable | Trigger a refill reminder below this count |
-| `start_date` | date | |
-| `end_date` | date, nullable | Null = ongoing |
-| `archived_at` | timestamptz, nullable | |
-| `created_at` | timestamptz | |
+| `id` | uuid PK | Generated UUID |
+| `profile_id` | uuid FK | Required; references `profiles` |
+| `name`, `dosage` | text | Required; dosage is display text |
+| `instructions` | text | Nullable |
+| `recurrence_rule` | jsonb | Required; interpreted by the app |
+| `quantity_on_hand` | integer | Nullable; null means no supply tracking |
+| `refill_threshold` | integer | Nullable; UI/helper default is about three days of doses |
+| `start_date` | date | Required, local calendar date |
+| `end_date` | date | Nullable; inclusive last treatment day |
+| `archived_at` | timestamptz | Nullable; stop timestamp |
+| `created_at` | timestamptz | Required, default now |
 
-> `medications.quantity_on_hand` is decremented by a trigger on `dose_logs` when a dose becomes `taken` (migration `0005`); `refill_threshold` defaults to ~3 days of doses when supply is entered.
+The form creates 1–4 daily times, starts on the current local date, and supports ongoing or 1–365-day courses. Validation of quantities, duplicate times, and duration is largely in the client; the initial medication table does not enforce those ranges or recurrence JSON structure.
 
-### `dose_logs`
-One row per scheduled dose occurrence — the adherence record.
+Occurrences begin at the later of local start-day midnight and creation time, and end at the earlier of the course's last local day and the stop timestamp. Changing times creates a new medication and archives the old one. Other editable fields change in place; this is not an immutable audit trail. See [Reliability](RELIABILITY.md#editing-and-history).
 
-| Column | Type | Notes |
+## Dose logs
+
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid, PK | |
-| `medication_id` | uuid, FK → `medications.id` | |
-| `scheduled_at` | timestamptz | |
-| `status` | text | `pending` \| `taken` \| `skipped` \| `snoozed` |
-| `logged_at` | timestamptz, nullable | When the patient actually responded |
+| `id` | uuid PK | Generated UUID |
+| `medication_id` | uuid FK | Required; references `medications` |
+| `scheduled_at` | timestamptz | Required; identifies the scheduled occurrence |
+| `status` | text | `pending`, `taken`, `skipped`, or `snoozed`; default pending |
+| `logged_at` | timestamptz | Nullable; when the answer was made |
 
-### `appointments`
-Doctor-visit reminders — **patient-entered only, never synced to a provider system.**
+Unique key: `(medication_id, scheduled_at)`. Dose answers use upsert on that key. The app derives unanswered occurrences as pending placeholders; it does not prepopulate every scheduled dose in this table. Current user actions save taken/skipped. Snoozing schedules a local notification without writing a snoozed log.
 
-| Column | Type | Notes |
+Migration `0005` subtracts one tracked supply unit on insert-as-taken or a transition into taken; a transition out of taken adds one. Repeating the same taken upsert does not subtract again. Decrements clamp at zero. There is no dose-log deletion adjustment, inventory ledger, or parsing of dosage text into pill quantities.
+
+## Appointments
+
+Patient-entered visit reminders, with no linked provider identity or booking integration.
+
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid, PK | |
-| `profile_id` | uuid, FK → `profiles.id` | |
-| `provider_name` | text | Free text, not a linked account |
-| `specialty` | text, nullable | |
-| `location` | text, nullable | |
-| `scheduled_at` | timestamptz | |
-| `pre_visit_notes` | text, nullable | Checklist / prep notes |
-| `post_visit_notes` | text, nullable | Filled in after the visit |
-| `created_at` | timestamptz | |
+| `id` | uuid PK | Generated UUID |
+| `profile_id` | uuid FK | Required |
+| `provider_name` | text | Required free text |
+| `specialty`, `location` | text | Nullable |
+| `scheduled_at` | timestamptz | Required, single instant |
+| `pre_visit_notes`, `post_visit_notes` | text | Nullable |
+| `created_at` | timestamptz | Required, default now |
 
-### `food_entries`
+Visits have no recurrence column. The notification planner derives day-before and hour-before alerts from `scheduled_at`.
 
-What a profile ate and when — a plain log (no calories, macros or health judgements). Added in `0003_nutrition_exercise.sql`.
+## Food entries
 
-| Column | Type | Notes |
+Plain meal logs; no calorie, macro, or clinical assessment fields.
+
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid | PK |
-| `profile_id` | uuid | → `profiles.id`, cascade delete. Same ownership model as medications/appointments |
-| `name` | text | 1–120 chars |
-| `meal_type` | text | `breakfast` · `lunch` · `dinner` · `snack` · `other` |
-| `eaten_at` | timestamptz | One instant for date + time; the app queries by local-day range |
-| `quantity` | text | Optional free text ("1 bowl", "2 eggs") |
-| `notes` | text | Optional |
-| `created_at`, `updated_at` | timestamptz | `updated_at` maintained by a trigger |
+| `id` | uuid PK | Generated UUID |
+| `profile_id` | uuid FK | Required |
+| `name` | text | Required; trimmed length 1–120 |
+| `meal_type` | text | `breakfast`, `lunch`, `dinner`, `snack`, `other` |
+| `eaten_at` | timestamptz | Required |
+| `quantity` | text | Nullable; at most 60 characters |
+| `notes` | text | Nullable; at most 1000 characters |
+| `created_at`, `updated_at` | timestamptz | Default now; update trigger maintains `updated_at` |
 
-### `exercise_entries`
+Index: `(profile_id, eaten_at desc)`.
 
-What activity a profile did, when, and for how long. Added in `0003_nutrition_exercise.sql`.
+## Exercise entries
 
-| Column | Type | Notes |
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid | PK |
-| `profile_id` | uuid | → `profiles.id`, cascade delete |
-| `exercise_type` | text | `walking` · `running` · `cycling` · `gym` · `strength` · `yoga` · `stretching` · `swimming` · `sports` · `other` |
-| `name` | text | Custom label; required when the type is `other` |
-| `started_at` | timestamptz | |
-| `duration_minutes` | integer | 1–1440 |
-| `intensity` | text | Optional: `light` · `moderate` · `vigorous` |
-| `notes` | text | Optional |
-| `created_at`, `updated_at` | timestamptz | |
+| `id` | uuid PK | Generated UUID |
+| `profile_id` | uuid FK | Required |
+| `exercise_type` | text | `walking`, `running`, `cycling`, `gym`, `strength`, `yoga`, `stretching`, `swimming`, `sports`, `other` |
+| `name` | text | Nullable; trimmed length 1–120 when set; required for `other` |
+| `started_at` | timestamptz | Required |
+| `duration_minutes` | integer | Required; 1–1440 |
+| `intensity` | text | Nullable; `light`, `moderate`, `vigorous` |
+| `notes` | text | Nullable; at most 1000 characters |
+| `created_at`, `updated_at` | timestamptz | Default now; update trigger maintains `updated_at` |
 
-Both tables are RLS-scoped through `profiles.owner_id = auth.uid()`, so each family member's entries are separate and only their owner can read or change them. Deleting a profile or the account removes them (cascade), so `delete_my_account()` needed no change. Reminders for meals/exercise are deliberately not modeled yet — extend `reminders.source_type` and `notifications/plan.ts` when they're wanted.
+Index: `(profile_id, started_at desc)`. Food/exercise records are logs and do not directly schedule notifications. A user may separately create a custom reminder about either activity; there is no foreign-key link between them.
 
-### `guardians`
+## Guardians
 
-People a patient trusts to be told about a missed dose. Contact details only, typed in by the patient. Added in `0004_guardians.sql`.
+Contacts entered by the account owner. Storing a guardian does not grant that person data access.
 
-| Column | Type | Notes |
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid | PK |
-| `profile_id` | uuid | → `profiles.id`, cascade delete. Guardians belong to the profile they watch over, so each family member has their own |
-| `name` | text | 1–80 chars |
-| `relationship` | text | Optional label ("Parent", "Partner"…) |
-| `phone` | text | Digits with optional leading `+`, 7–15 digits (checked in the database too) |
-| `notify_on_missed` | boolean | Whether a "Tell them" button is offered on missed doses (default true) |
-| `linked_user_id` | uuid | Reserved for a future linked-account mode; unused today |
-| `created_at`, `updated_at` | timestamptz | |
+| `id` | uuid PK | Generated UUID |
+| `profile_id` | uuid FK | Required |
+| `name` | text | Required; trimmed length 1–80 |
+| `relationship` | text | Nullable; at most 40 characters |
+| `phone` | text | Required; 7–15 digits with an optional leading `+` |
+| `notify_on_missed` | boolean | Default true; controls whether the contact is offered for manual messaging |
+| `linked_user_id` | uuid FK | Nullable; reserved and unused by current app flows |
+| `created_at`, `updated_at` | timestamptz | Default now; update trigger maintains `updated_at` |
 
-At most 3 per profile (enforced by a trigger). RLS-scoped like everything else, so a guardian's phone number is only ever visible to the account that entered it.
+Index: `profile_id`. The UI and a before-insert count trigger implement an intended limit of three per profile. The trigger is not a concurrency-safe uniqueness constraint and does not run on profile reassignment. The app does not expose reassignment or linked-account sharing.
 
-### `custom_reminders` / `reminder_completions`
+## Custom reminders
 
-Anything a person wants to be reminded about that isn't a medication or a visit (a blood test, a vaccine, "check blood pressure"). Added in `0006_custom_reminders.sql`.
-
-| Column | Type | Notes |
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid | PK |
-| `profile_id` | uuid | → `profiles.id`, cascade delete |
-| `title` | text | 1–120 chars |
-| `notes` | text | Optional, ≤ 500 |
-| `recurrence_rule` | jsonb | Same shapes as medications, plus `monthly` `{day, at[]}` and `every_n_days` `{every, from, at[]}` |
-| `start_date` / `end_date` | date | End optional; must not precede start |
-| `created_at`, `updated_at` | timestamptz | |
+| `id` | uuid PK | Generated UUID |
+| `profile_id` | uuid FK | Required |
+| `title` | text | Required; trimmed length 1–120 |
+| `notes` | text | Nullable; at most 500 characters |
+| `recurrence_rule` | jsonb | Required; shapes below |
+| `start_date` | date | Required |
+| `end_date` | date | Nullable; database requires it not precede start |
+| `created_at`, `updated_at` | timestamptz | Default now; update trigger maintains `updated_at` |
 
-`reminder_completions (reminder_id, scheduled_at, completed_at)` has one row per ticked-off occurrence (primary key `(reminder_id, scheduled_at)`); un-ticking deletes the row. Both tables are RLS-scoped through `profiles.owner_id`. (The older `reminders` table is unused.)
+Index: `profile_id`. Repeating reminders use the same creation/start/end window idea as medication schedules. A one-off occurrence uses its own instant, even if that instant is already past.
 
-### `reminders`
-Generic reminder config, one per medication or appointment (1:many — a dose can have multiple reminder offsets).
+### Reminder completions
 
-| Column | Type | Notes |
+| Column | Type | Behavior |
 |---|---|---|
-| `id` | uuid, PK | |
-| `source_type` | text | `medication` \| `appointment` |
-| `source_id` | uuid | Points at `medications.id` or `appointments.id` |
-| `offset_minutes` | integer | e.g. -15, -60, -1440 |
-| `escalation_enabled` | boolean | Notify a caregiver if missed |
+| `reminder_id` | uuid FK | References `custom_reminders` |
+| `scheduled_at` | timestamptz | Occurrence instant |
+| `completed_at` | timestamptz | Required, default now |
+
+Primary key: `(reminder_id, scheduled_at)`. Completing inserts idempotently; undo deletes the row. Edits to a reminder's recurrence happen in place and do not version its previous schedule or remap old completion timestamps.
+
+## Reserved tables
+
+### Legacy `reminders`
+
+Present since `0001`, but unused by current scheduling. Columns: generated `id` UUID; `source_type` (`medication` or `appointment`); `source_id` UUID; `offset_minutes` integer; `escalation_enabled` boolean default false. All are required.
+
+`source_id` is a polymorphic reference, not an enforced FK. Its escalation field does not enable automatic alerts. New reminder work should start from `custom_reminders` and the current planner rather than assume this table is active.
 
 ### `subscriptions`
-Mirrors RevenueCat entitlement state for quick local reads.
 
-| Column | Type | Notes |
+Reserved for a future trusted billing integration. Columns: `user_id` UUID PK/FK; required `status` (`trial`, `active`, `expired`, `canceled`); nullable `current_period_end`; required `updated_at` default now. Users have read-only access to their own row. No RevenueCat webhook, SDK, or entitlement consumer is implemented.
+
+## Recurrence JSON
+
+The shared engine in [recurrence.ts](../src/lib/recurrence.ts) supports:
+
+| Type | Example | Current creation UI |
 |---|---|---|
-| `user_id` | uuid, PK, FK → `auth.users.id` | |
-| `status` | text | `trial` \| `active` \| `expired` \| `canceled` |
-| `current_period_end` | timestamptz, nullable | |
-| `updated_at` | timestamptz | |
+| `times_per_day` | `{"type":"times_per_day","count":2,"at":["09:00","21:00"]}` | Medications and daily custom reminders |
+| `weekdays` | `{"type":"weekdays","days":["mon","fri"],"at":["09:00"]}` | Custom reminders |
+| `once` | `{"type":"once","at":"2026-10-01T04:00:00.000Z"}` | Custom reminders |
+| `monthly` | `{"type":"monthly","day":31,"at":["09:00"]}` | Custom reminders |
+| `every_n_days` | `{"type":"every_n_days","every":3,"from":"2026-10-01","at":["09:00"]}` | Custom reminders |
+| `interval_hours` | `{"type":"interval_hours","every":8}` | No current form exposes it |
 
-## Recurrence rule shape (`medications.recurrence_rule`)
+Daily occurrences use the `at` array; `count` is metadata. The monthly day clamps to the month's last day. Every-N-days uses a local calendar-day anchor. Daily custom reminders allow up to four times; the other repeating form choices keep one time.
 
-Stored as JSON, interpreted by `src/lib/recurrence.ts` (shared between medications and appointments if needed later):
+The interval-hours implementation starts from the effective query lower bound, not a stored medication anchor. It is not suitable to advertise as a stable cross-query interval schedule without further work. Recurrence JSON has no database shape validation.
 
-```json
-{
-  "type": "interval_hours",
-  "every": 8
-}
-```
-```json
-{
-  "type": "times_per_day",
-  "count": 3,
-  "at": ["08:00", "14:00", "20:00"]
-}
-```
-```json
-{
-  "type": "weekdays",
-  "days": ["mon", "tue", "wed", "thu", "fri"],
-  "at": ["09:00"]
-}
-```
+## Dates, identity, and deletion
 
-Keeping this as one jsonb column (rather than a rigid set of columns) avoids a migration every time a new recurrence pattern is needed — the recurrence engine is the part of this app most likely to grow features (§8 of the product spec).
+- Date-only values are local calendar dates (`YYYY-MM-DD`), parsed with local helpers.
+- Occurrence/visit/log instants are ISO timestamps backed by `timestamptz`; compare epoch times rather than serialized strings.
+- No IANA timezone is stored per profile or schedule. Travel/timezone behavior needs device validation.
+- `delete_my_account()` requires an authenticated caller, removes their legacy reminder rows, then deletes their auth user. Foreign-key cascades remove owned profiles and child records.
+- Account deletion does not define backup retention or erase already sent SMS messages. Those are separate data-handling concerns in [Compliance](COMPLIANCE.md).
 
-## What's intentionally not modeled
-
-No `providers`, `clinics`, `bookings`, or `messages` tables. Adding any of these is a compliance decision, not just a schema change — see [`COMPLIANCE.md`](COMPLIANCE.md).
+There are no provider, clinic, booking, messaging, allergy, or condition tables. Local auth, caches, preferences, and queued dose answers are described in [Reliability](RELIABILITY.md).

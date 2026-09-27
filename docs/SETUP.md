@@ -1,101 +1,145 @@
 # Setup
 
-## Prerequisites
+Last reviewed: **2026-09-27**. These steps describe the checked-in configuration; they do not confirm which migrations or settings are deployed to the connected project.
 
-- Node.js 20+ (developed against Node 24)
-- Expo Go app on your phone (easiest way to run the app during development), or an iOS/Android simulator
-- A free [Supabase](https://supabase.com) account
+## Requirements
 
-## 1. Install dependencies
+- Node 24.3+ within the Node 24 release line; the last checks used Node 24.15.0.
+- npm and access to a Supabase project.
+- A browser for UI development, or an SDK-compatible Expo Go/native build for mobile testing.
+- For native builds: the relevant Expo/EAS account and platform build credentials.
+
+The app declares Expo SDK 57, React Native 0.86.3, and React 19.2.3. Use `package-lock.json` for reproducible installs. The repository's `.npmrc` enables `legacy-peer-deps`; do not silently discard that configuration when reproducing an install.
+
+## 1. Install and configure
 
 ```bash
-npm install
+npm ci
 ```
 
-## 2. Create a Supabase project
-
-1. Go to [supabase.com](https://supabase.com) → New Project.
-2. Once created, open **Project Settings → API** and copy the **Project URL** and **anon public key**.
-3. Copy `.env.example` to `.env` and fill in those two values:
+For a fresh checkout without `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-## 3. Apply the database schema
+Populate:
 
-The schema lives in `supabase/migrations/0001_init.sql` (tables, Row Level Security policies, and the trigger that auto-creates a "self" profile on signup — see [`DATA_MODEL.md`](DATA_MODEL.md)).
-
-Easiest path (no CLI install required): open the Supabase dashboard → **SQL Editor** → paste the contents of `supabase/migrations/0001_init.sql` → Run.
-
-Alternative, using the Supabase CLI, once you have a project linked:
-
-```bash
-npx supabase link --project-ref <your-project-ref>
-npx supabase db push
+```dotenv
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_CLIENT_KEY
 ```
 
-### Second migration (account deletion)
+Use the target project's public client key, never a service-role key. These values are bundled into the client. Access control depends on authentication and database policies, not on hiding this key. `.env` is ignored by Git. Keep existing local values when updating the repository, and restart Metro after changing them.
 
-Also run `supabase/migrations/0002_delete_account.sql` the same way. It adds the `delete_my_account()` function that the Settings screen's "Delete account & data" uses. Until it's applied, that button reports that deletion isn't set up.
+`src/lib/supabase.ts` throws at startup if either variable is absent. It persists the auth session using AsyncStorage.
 
-### Third migration (nutrition & exercise)
+## 2. Apply all six migrations
 
-Run `supabase/migrations/0003_nutrition_exercise.sql` too. It adds the `food_entries` and `exercise_entries` tables (with the same Row Level Security as the rest) that power the Lifestyle tab and the food/exercise entries on the calendar. It only adds tables, so it's safe on a database that already has data. Until it's applied, medications and doctor visits work as before, and the Lifestyle tab shows "Couldn't load".
+On a new Supabase database, run these files in order using its SQL editor:
 
-### Fourth migration (guardians)
+| File in `supabase/migrations/` | Adds |
+|---|---|
+| `0001_init.sql` | Profiles, medications, dose logs, visits, legacy reminders, subscription placeholder, RLS policies, sign-up profile trigger |
+| `0002_delete_account.sql` | Authenticated `delete_my_account()` function |
+| `0003_nutrition_exercise.sql` | Food/exercise tables, indexes, timestamp triggers, policies |
+| `0004_guardians.sql` | Guardian contacts, insert limit, policies |
+| `0005_refill_countdown.sql` | Dose-status trigger that adjusts medication supply |
+| `0006_custom_reminders.sql` | Custom reminders, completions, indexes, policies |
 
-Run `supabase/migrations/0004_guardians.sql` as well. It adds the `guardians` table behind the "Guardian" row on the Medications tab and the "Tell Mom" button on missed doses. Until it's applied that row simply doesn't appear, and everything else works.
+These files contain ordinary `CREATE TABLE` and `CREATE TRIGGER` statements; they are not safe to rerun indiscriminately. On an existing project, establish which migrations have already run and apply only the missing ones. Use a disposable project first when validating deployment procedures.
 
-### Fifth migration (refill countdown)
+The repository does not include `supabase/config.toml` or a ready-to-run local Supabase stack. If adopting the Supabase CLI, configure the project and reconcile migration history before using `db push`; SQL-editor changes are not automatically evidence of CLI migration history.
 
-Run `supabase/migrations/0005_refill_countdown.sql`. It makes each taken dose count a medication's supply down (see [`RELIABILITY.md`](RELIABILITY.md)). Until it's applied, supply numbers simply won't decrease; nothing else is affected.
+Missing later migrations affect their features: deletion reports a setup error, food/exercise or custom reminders fail to load, guardians are unavailable, and supply does not count down without `0005`. See [Data model](DATA_MODEL.md).
 
-### Sixth migration (custom reminders)
+## 3. Configure test authentication
 
-Run `supabase/migrations/0006_custom_reminders.sql`. It adds the tables behind the Reminders screen (Profile → Reminders) and the reminders shown on the calendar. Until it's applied, Reminders shows "Couldn't load reminders" and everything else works as before.
+Login uses Supabase email/password authentication. Sign-up creates a self profile through the database trigger.
 
-## 4. Turn off email confirmation (for local testing)
+For isolated development, either use confirmed test accounts or disable email confirmation in the test project's auth settings. When confirmation is enabled and sign-up returns no session, the app tells the user to check email and stays at login.
 
-By default Supabase requires clicking an email confirmation link before sign-in works. During local development there's nowhere for that link to redirect to, so sign-in fails with "email not confirmed."
+The app has the `mediulr` URL scheme, but no complete auth callback or password-reset flow. `detectSessionInUrl` is disabled in the client. Production confirmation/recovery needs implementation and testing; adding an allowed redirect URL alone does not complete it.
 
-**Authentication → Providers → Email** → toggle off **"Confirm email"** → Save.
+## 4. Run locally
 
-If you already have a stuck unconfirmed test account: **Authentication → Users** → find it → confirm manually (or run `update auth.users set email_confirmed_at = now() where email = '...';` in the SQL Editor).
+| Command | Purpose |
+|---|---|
+| `npm run start` | Start Expo/Metro |
+| `npm run android` | Start Expo targeting Android |
+| `npm run ios` | Start Expo targeting iOS |
+| `npx expo start --web` | Browser preview |
+| `npm run typecheck` | TypeScript validation |
+| `npm test` | All six logic test files |
 
-Before real launch this needs a proper fix — a deep-link redirect (`mediulr://`, already set as the app's `scheme` in `app.json`) so the confirmation email opens back into the app instead of a dead link. Turning confirmation back on then is a config toggle, not a code change.
+The Android/iOS npm scripts start the development server; they do not build a standalone app. Native folders are generated and ignored by Git.
 
-## 5. Run the app
+Web preview supports the routes, forms, calendar, and browser-backed persistence. `src/lib/webAlert.ts` adapts confirmation alerts. Native notifications and haptics are not a web test target; SMS links/share behavior depends on the browser and installed handlers.
+
+## 5. Native notification testing
+
+Mediulr schedules **local** notifications. It does not obtain push tokens or send through a remote push service. Expo distinguishes the Android Expo Go restriction on remote push from local notifications, which remain available. Use a standalone build for acceptance testing of Mediulr's action buttons and lifecycle behavior. [Expo Notifications documentation](https://docs.expo.dev/versions/latest/sdk/notifications/).
+
+Some source comments still attribute all notification limitations to Expo Go; the actual wrapper attempts lazy loading and catches module errors. Permission denial or scheduling failure can leave records saved without notifications. Check permissions and device logs, then follow the [device checklist](RELIABILITY.md#device-validation).
+
+`app.json` currently has no explicit `expo-notifications` plugin entry, and scheduling code does not configure an Android notification channel. Review the native setup against the target build and Expo's documentation before relying on delivery. Background action processing is not fully implemented or verified.
+
+## 6. EAS build profiles
+
+`eas.json` defines:
+
+- `preview`: internal distribution; Android output is an APK.
+- `production`: automatic version increment and remote version source.
+
+Both profiles contain public Supabase values for the existing project. They must point at the intended backend; changing only local `.env` does not update these profile values. `app.json` also contains the existing EAS project ID, `com.mediulr.app` identifiers, and `mediulr` scheme. A separate deployment needs its own project/credentials configuration.
+
+With EAS CLI configured for the intended project, the existing profiles can be invoked with:
 
 ```bash
-npm run start
+npx eas-cli build --platform android --profile preview
+npx eas-cli build --platform android --profile production
+npx eas-cli build --platform ios --profile production
 ```
 
-This opens the Expo dev server — scan the QR code with Expo Go (iOS/Android) or press `i` / `a` for a simulator.
+There is no `development` profile or `expo-dev-client` dependency today. Configure those explicitly if adopting a development-client workflow. Building does not submit an app to either store; store submission and purchases remain separate work.
 
-## 6. (Later) Regenerate types from the live schema
-
-Once the schema in Supabase is the source of truth (rather than the hand-written stand-in), regenerate `src/types/database.ts`:
+## 7. Maintenance and checks
 
 ```bash
-npx supabase gen types typescript --project-id <your-project-ref> > src/types/database.ts
+npm run typecheck
+npm test
 ```
 
-## 7. (Before launch) Subscriptions
+The 2026-09-27 review passed both checks: 103 tests across `logic`, `health`, `guardians`, `reliability`, `i18n`, and `reminders`. No lint script, UI test runner, CI workflow, or database integration test suite is checked in.
 
-`app/paywall.tsx` is currently a UI stub with no real purchase flow. To wire up billing:
-
-1. Create subscription products in App Store Connect and Google Play Console (~$2–4/month, per [the product spec](../README.md)).
-2. Create a [RevenueCat](https://www.revenuecat.com) project, connect both stores.
-3. `npx expo install react-native-purchases` and follow RevenueCat's Expo guide.
-4. Point the `subscriptions` table's writes at a RevenueCat webhook → Supabase Edge Function (service-role key, never exposed client-side).
-
-Not needed for local development — only before submitting to the stores.
-
-## Web preview (no phone needed)
+Database types in `src/types/database.ts` are hand-maintained. After verifying the live schema, generate candidate types to a temporary file for review rather than overwriting the source blindly:
 
 ```bash
-npx expo start --web
+npx supabase gen types typescript --project-id YOUR_PROJECT_REF > /tmp/mediulr-database.types.ts
 ```
 
-Opens the app in your browser (use the browser's phone-size view for a realistic layout). Screens, forms, the calendar, the time picker, offline queue and confirmation dialogs all work. What doesn't: reminders/notification buttons (need a real build), haptics, and opening the messaging app for "Tell guardian" (the link is built correctly but a browser can't open SMS). Confirmation dialogs use the browser's own OK/Cancel box on web.
+Reconcile generated types with application use, then typecheck. To regenerate image assets after intentionally changing the icon script:
+
+```bash
+node scripts/generate-icons.mjs
+```
+
+The script owns its color constants independently of the theme and rewrites the PNG assets.
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| Missing Supabase config at startup | Both public variables are populated; restart Metro |
+| New account cannot sign in | Email confirmation state and the configured target project |
+| No self profile / persistent loading | Initial migration, sign-up trigger, authenticated session, and query errors |
+| Meals, exercise, guardians, or reminders unavailable | Corresponding migration and RLS policies |
+| Supply never decreases | Migration `0005`; the dose must be saved as taken |
+| Notification does not fire | Permission, native module/build configuration, scheduling logs, notification cap, foreground refresh |
+| Offline day has no data | That day may not have been fetched before; persistence is a query cache |
+| Urdu text changes but layout does not | Close and reopen the native app to apply direction |
+| Tests fail with an IPC socket permission error | `tsx` needs permission to create its local IPC socket in restricted execution environments |
+
+## Billing remains unconfigured
+
+The paywall's subscribe action dismisses the screen and Restore has no handler. There is no RevenueCat SDK, entitlement gate, webhook, or purchase backend. The `subscriptions` table is reserved for a future integration. Implement and test store products, purchases/restoration, trusted entitlement updates, and access rules before treating the displayed price as an available subscription.

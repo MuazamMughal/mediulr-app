@@ -1,46 +1,64 @@
 # Roadmap
 
-Condensed from the product spec's §5. This is the file to update as work actually gets done — check items off as they land.
+Status reviewed against the repository on **2026-09-27**. Checked items mean implemented in code, not verified in production. This replaces the earlier month-based estimates; no release dates are committed here.
 
-## MVP Build (Months 0–3)
+## Implemented
 
-- [x] Project scaffold (Expo Router + TypeScript + Supabase)
-- [x] Supabase schema + RLS policies (`supabase/migrations/0001_init.sql`)
-- [x] Auth: sign up / log in (`app/login.tsx`)
-- [x] Calendar Engine: day view merging medications + appointments (`app/(tabs)/index.tsx`) — week/month views still to build
-- [x] Medication Scheduler: add medication, recurrence rules, dose logging (taken/skip)
-- [x] Customizable dose reminder times: each dose slot's clock time is editable, not locked to the frequency default (`src/components/TimeSlotEditor.tsx`)
-- [x] Doctor-Visit Reminders: manual add, pre/post-visit notes
-- [x] Notifications Engine: local scheduled notifications on add (`src/features/notifications`)
-- [x] Family/Caregiver Mode: add dependent profiles (`app/(tabs)/profile.tsx`)
-- [x] Design system: theme tokens, reusable components, full visual redesign across every screen (`src/theme/`, `src/components/`)
-- [x] Motion & delight pass: haptics on primary actions and Mark Taken, spring/fade transitions on the timeline and empty states, a live "now" marker on today's calendar, custom bottom-sheet headers for the add flows
-- [x] Native platform pass (via Expo's official design-system/native-ui skills): real `formSheet` presentation with an OS grab handle for Add Medication/Add Doctor Visit/Paywall (replacing a drawn handle bar), `borderCurve: "continuous"` squircle corners on cards/buttons/inputs, `boxShadow` instead of legacy shadow props, accessibility roles/labels on icon-only controls (Mark Taken, day navigation, sheet close)
-- [x] Treatment length: choose Ongoing / 3–30 days / custom when adding a medication; after the last day the medication clears from the calendar, reminders stop, and it moves to "Completed" (history stays)
-- [x] Audit pass: fixed taken/skipped not persisting (timestamp format mismatch), UTC date-parsing bugs, stale calendar after adding, lost history on stop, family profile switching, rolling 7-day reminder sync capped for iOS's 64 limit, cache/reminder wipe on sign-out — covered by `npm test` (`tests/logic.test.ts`)
-- [x] Run against a real Supabase project and a device (tested live via Expo Go)
-- [ ] Refill reminders (quantity is tracked; the "notify below threshold" job isn't wired up yet)
-- [ ] Missed-dose escalation (caregiver alert) — the Calendar visually flags a missed dose, but no notification/alert is sent to a caregiver yet
-- [ ] Subscription paywall: UI is fully designed (`app/paywall.tsx`), RevenueCat purchase flow not wired up — see `docs/SETUP.md` §7
-- [x] Account deletion: Settings calls `delete_my_account()` — **run `supabase/migrations/0002_delete_account.sql` in the Supabase SQL editor first**, or the app will say deletion isn't set up
-- [ ] Week/month calendar views (only the single-day view exists)
-- [ ] Dark mode: palette exists in `src/theme/colors.ts` but isn't wired up or visually QA'd (`app.json` pins light mode for now)
-- [ ] Local notifications on Android specifically require a development build — Expo Go dropped support in SDK 53 (works fine on iOS/dev builds)
+- [x] Expo Router / React Native / TypeScript app with Supabase Auth and Postgres access.
+- [x] Six SQL migrations covering ownership policies, profile creation, account deletion, lifestyle logs, guardians, supply adjustment, and custom reminders.
+- [x] Email/password sign-in/sign-up and basic onboarding.
+- [x] Unified daily timeline for doses, visits, meals, exercise, and custom reminders.
+- [x] Selectable month grid and collapsible week strip with per-day markers.
+- [x] Medication creation with 1–4 daily dose times, duplicate-time validation, ongoing courses, preset durations, and custom courses up to 365 days.
+- [x] Medication editing, schedule replacement, stopping, deletion, and completed/stopped lists.
+- [x] Taken/skipped dose answers, immediate UI updates, persistent retry queue, and cached schedule queries.
+- [x] Supply countdown through a database trigger, low-supply UI, and projected refill notes in dose notifications.
+- [x] Manual visit creation/editing/deletion and pre/post-visit notes.
+- [x] Food and exercise creation/editing/deletion, daily summaries, and calendar markers.
+- [x] Custom reminders: once, daily, selected weekdays, monthly, every N days, and per-occurrence completion.
+- [x] Dependent profile creation and switching.
+- [x] Guardian contacts and patient-initiated missed-dose messages, with SMS/share fallback.
+- [x] Local notification planning across family profiles, action categories, ten-minute snoozes, and 15/30-minute follow-ups.
+- [x] English/Urdu dictionaries, localized notification text, RTL handling, and Simple Mode.
+- [x] Shared themed components, form sheets, haptics, in-app date/time pickers, and browser Alert adapter.
+- [x] Account deletion UI/RPC and sign-out cache/queue/notification cleanup paths.
+- [x] EAS preview APK and production build profile configuration.
+- [x] Typechecking and 103 passing logic tests in the 2026-09-27 local review.
 
-## Beta & Launch (Months 3–5)
+## Reliability and release validation
 
-- [ ] Closed beta (50–200 users)
-- [ ] Onboarding flow tuned for "first add in under a minute"
-- [ ] Retention instrumentation (PostHog) — week-4 retention is the north-star metric
-- [ ] Public launch on App Store / Play Store
+- [ ] Verify migration deployment, account isolation, deletion cascades, and supply triggers against a real test database.
+- [ ] Validate native notification permissions/configuration, action buttons, cold launch, background/killed states, device reboot, and account changes.
+- [ ] Address schedule renewal when the app stays closed beyond the planned horizon or the 60-item cap shortens coverage.
+- [ ] Validate notification replacement races, preserved snoozes after edits/deletion, and custom-reminder completion/undo behavior.
+- [ ] Verify first-medication onboarding and direct-route behavior: reminder/dose sync hooks currently mount only in the tab layout.
+- [ ] Validate offline restoration, storage-write failures, prolonged disconnection, and cleanup with in-flight requests.
+- [ ] Improve consistent loading/error/retry behavior on core calendar, medication, and profile screens.
+- [ ] Add integration/device coverage for the above; current tests exercise pure logic, not delivery or database enforcement.
 
-## Growth (Months 5+)
+See [Reliability](RELIABILITY.md) for the implemented guarantees and limits. Automatic guardian messaging is not an unfinished part of the current manual contact feature.
 
-- [ ] Health-record PDF export
-- [ ] Calendar widget / lock-screen view
-- [ ] One-way calendar export to Google/Apple Calendar (patient's own calendar only)
-- [ ] Smarter reminder timing
+## Before public launch
 
-## Explicitly not planned
+- [ ] Complete email-confirmation links, password recovery, and authenticated navigation/session-expiry handling.
+- [ ] Connect RevenueCat/store purchases, restoration, entitlements, and trusted server updates. Paywall UI currently has no purchase behavior.
+- [ ] Review deployed security settings, local storage choices, privacy disclosures, retention, and incident handling; see [Compliance](COMPLIANCE.md).
+- [ ] Implement user data export/portability. Account deletion is implemented but needs deployment verification.
+- [ ] Complete native device QA for English/Urdu, RTL, large text, Simple Mode, and accessibility.
+- [ ] Finish dark-mode configuration and visual QA. Both palettes exist and the provider reads the color scheme, but native configuration is pinned to light.
+- [ ] Instrument retention/engagement if proceeding with PostHog; decide and review the exact non-health-content events before adding it.
+- [ ] Measure and refine onboarding, including the intended quick first-add experience.
+- [ ] Run the planned closed beta, prepare store listings/disclosures, and submit release builds.
 
-No provider/clinic phase. See [`COMPLIANCE.md`](COMPLIANCE.md) for why, and treat that boundary as a standing constraint, not a backlog item to revisit casually.
+## Later product work
+
+- [ ] Health-record PDF export.
+- [ ] Calendar widget / lock-screen view.
+- [ ] One-way export to the patient's own Google/Apple calendar.
+- [ ] Smarter reminder timing and longer-term scheduling reliability.
+
+Biometric lock and allergies/conditions were mentioned in older architecture prose, but have no implementation here; they need explicit product scope before being treated as committed features. The current calendar is a day timeline with week/month date navigation, not a multi-day agenda.
+
+## Product boundary
+
+Provider directories, clinic dashboards, appointment booking, and patient-provider messaging remain outside the product scope. Guardian logins/shared access and server-sent alerts would require a separate product, consent, and privacy design. See [Compliance and data handling](COMPLIANCE.md).

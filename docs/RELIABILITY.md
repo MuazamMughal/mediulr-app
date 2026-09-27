@@ -1,35 +1,105 @@
-# Reliability: notification buttons, follow-ups, refills, offline
+# Reliability
 
-How the "a dose must never be missed because of the phone" features work, and what each needs.
+Last reviewed: **2026-09-27**. This describes implemented behavior and known limits. Local notifications, storage, and background execution are not guarantees that a dose reminder will always be delivered or answered.
 
-## Notification buttons (Taken / Snooze / Skip)
-- Dose notifications carry action buttons (`notifications/actions.ts`, registered in `scheduleNotifications.ts`). **Taken** and **Skip** don't open the app; **Snooze** schedules another reminder in 10 minutes; **Tell guardian** (last follow-up only, and only for profiles that have a guardian) opens a prefilled message.
-- Each notification carries the dose it is about in its `data` (`plan.ts`), so a tap knows which dose to answer. Taps are handled at the root (`useNotificationActions`), whichever screen is open, and a tap made while the app was closed is picked up on next launch.
-- **Needs a real build**: local notifications with buttons don't work in Expo Go on Android (SDK 53+). The APK/dev build is required. Whether a button tap fully works with the app *killed* differs between iOS and Android and must be checked on real devices; if the answer can't be saved at that moment it is queued (below) and sent on next launch.
+## Notification plan
 
-## Follow-ups and escalation
-- If a dose is unanswered, it is nudged 15 and 30 minutes after its time (`FOLLOW_UP_MINUTES`). If the profile has a guardian, the 30-minute one offers "Tell guardian". Only doses in the next 24 hours get follow-ups so they never use up the 60-notification budget.
-- Turn off in Settings → Follow-up reminders.
-- Answered doses get **nothing**: not the reminder, not follow-ups, not snoozes. This includes doses taken early, and answers still waiting in the offline queue (the plan is built from saved answers plus the queue). If today's answers can't be fetched (no signal), the existing schedule is left untouched instead of rebuilt from incomplete data.
+[plan.ts](../src/features/notifications/plan.ts) builds a time-sorted plan across all profiles owned by the account.
+
+| Event | Planned behavior |
+|---|---|
+| Medication dose | At its scheduled time; respects creation, course end, and stop time |
+| Unanswered dose follow-up | 15 and 30 minutes later, when follow-ups are enabled |
+| Final follow-up with an eligible guardian | Offers a manual Tell guardian action |
+| Doctor visit | 24 hours and 1 hour before the visit, if those instants remain in the future |
+| Custom reminder | At each occurrence, excluding saved completed occurrences |
+
+Medication/custom reminder planning looks seven days ahead. Follow-ups cover doses due within 24 hours and can include remaining nudges for a dose up to 30 minutes overdue. Appointment offsets are not restricted to the seven-day horizon. The combined plan is sorted and capped at 60 notifications; a busy family schedule can fill that cap well before seven days.
+
+Follow-ups default to on in preferences and can be disabled in Settings. Persisted taken/skipped answers and queued offline answers are excluded from the dose plan. If fetching dose answers or required custom completions fails, sync leaves the existing native schedule unchanged.
+
+## Scheduling lifecycle
+
+`useReminderSync` mounts with the tabs and replans when its fetched source data, language, or follow-up preference changes, and when the app returns to the foreground. It does not periodically replenish the schedule while the app is closed. Returning to the foreground does not guarantee every cached source record has been refetched first.
+
+`replaceAllReminders` serializes replacement operations, cancels scheduled non-snooze notifications, then schedules the new plan. It preserves snoozes because they are not part of that plan. Replacement is not atomic: an error after cancellation can leave a partial schedule. Permission denial causes a no-op, and scheduling errors are logged. Saving a record can therefore succeed without a notification being installed.
+
+There is no push-token registration, remote notification sender, or background schedule-refresh service. The 60-item planning cap does not include preserved snoozes, so the total native pending count can exceed it. Long app inactivity, dense schedules, source edits, and deletion with pending snoozes need device validation.
+
+## Notification actions
+
+Action categories and payload parsing live in `notifications/actions.ts`; registration/scheduling in `scheduleNotifications.ts`; response handling in `useNotificationActions.ts`.
+
+- **Taken / Skip:** enqueue the dose answer, attempt synchronization, and request cancellation of that occurrence's main notification, follow-ups, and snoozes.
+- **Snooze:** schedule another notification ten minutes from the tap. It does not save a snoozed dose status or cancel other follow-ups.
+- **Tell guardian:** fetch eligible contacts and open a prefilled SMS, falling back to sharing. The patient decides whether to send it.
+- **Done** on a custom reminder: write its completion directly to Supabase and cancel that occurrence's notifications. There is no persistent completion outbox; failures in this notification handler are logged.
+- A plain notification tap opens the app; it does not navigate to a particular record.
+
+The root listener handles responses while JavaScript is running and checks the last notification response at launch. Taken/Skip/Done/Snooze are configured not to foreground the app; Tell guardian does foreground it. No headless task is registered, so the current code must not be described as guaranteeing immediate action handling while terminated. Duplicate-response suppression is in memory for the current process.
+
+Expo's Android Expo Go limitation since SDK 53 concerns remote push; its documentation says local notifications remain available. Standalone device builds are still the acceptance target for this app's notification behavior. [Expo Notifications](https://docs.expo.dev/versions/latest/sdk/notifications/).
+
+## Offline scope
+
+| Data/action | Current behavior |
+|---|---|
+| Profiles, medications, appointments | Successful query results persist in AsyncStorage |
+| Daily calendar and month dose/visit summaries | Persist under the `calendarEvents` query family |
+| Custom reminder lists/completions | Successful queries persist under `customReminders` |
+| Food, exercise, guardian queries | Excluded from persisted query cache |
+| Taken/skipped dose answers | Persistent retry queue with immediate timeline overlay |
+| Custom completion/undo and all other edits | Network writes; no persistent write queue |
+
+The query cache uses `mediulr:query-cache`, a three-day maximum age, and a version buster. It contains fetched queries, not every possible day. A previously unopened day can require a network fetch even when medication lists are cached. Restoration also depends on a usable auth session and successful device storage.
+
+### Dose outbox
+
+The queue in `features/offline` stores one answer per `(medicationId, scheduledAt epoch)` under `mediulr:dose-outbox`, including the original answer time. A later answer replaces the earlier one. UI overlays apply it immediately; confirmed answers patch loaded calendar arrays before the queue entry is removed.
+
+Flushes run sequentially at tab startup, on foreground, and on a 20-second timer while entries are waiting and JavaScript is active. Transient failures retain entries; database errors in the configured permanent-error classes and entries older than seven days are dropped during flush. The mounted sync hook reports dropped entries. There is no OS background worker guaranteeing retries while suspended.
+
+Storage errors are swallowed so the current session can continue in memory. Consequently, queue acceptance is not proof of durable storage if the device write failed. The queue is cleared on sign-out, so unsynced answers do not intentionally carry into another account.
+
+### Cleanup
+
+The `SIGNED_OUT` listener clears in-memory queries, requests persisted-cache removal, clears the dose queue, and cancels pending native notifications. Account deletion calls `delete_my_account()` and then signs out locally. Device preferences remain. These asynchronous cleanup paths need testing alongside in-flight saves and notification replacements; there is no transactional cancellation of all ongoing work.
 
 ## Refill tracking
-- `medications.quantity_on_hand` counts down by one when a dose becomes **taken** (database trigger, migration `0005`), so it is exact and can't double-count when an answer is synced twice. Skipping doesn't use a pill; changing taken → skipped gives it back; never below zero.
-- The warning threshold is about three days of doses (`defaultRefillThreshold`). A course that will finish before the supply runs out never asks for a refill. Shown on the medication list, the medication screen, a banner on Home, and as a note on the dose reminders that run the supply low.
 
-## Offline
-- Answering a dose never waits for the network (`features/offline`). The answer goes into a durable queue on the phone and shows as answered at once; it is sent when a connection allows (on start, when the app returns to the foreground, and every 20 s while anything is waiting). The time you *answered* is what gets saved, not the time it synced.
-- Refused answers (e.g. the medication was deleted) are dropped and reported; anything else is retried for up to 7 days.
-- A copy of the schedule (profiles, medications, visits, calendar) is cached on the phone for 3 days so the app opens and shows what's due with no signal. **Not** cached: food, exercise, guardians' phone numbers. The cache and the queue are wiped on sign-out.
-- Scope: answering doses is offline-safe. Adding or editing medications, visits, food etc. still needs a connection and says so if it fails.
+Migration `0005` adjusts `quantity_on_hand` when a dose is saved as taken or its status changes into/out of taken. An unchanged taken upsert does not decrement twice. Each taken occurrence consumes one unit, regardless of the free-text dosage; decrements clamp to zero.
 
-## Editing
-- Name, dosage, notes, supply and end date are edited in place. Changing the **times** would rewrite every past day (doses are derived from the schedule), so it stops the old medication and starts a new one from now — history is preserved (`replaceMedicationSchedule`).
-- Deleting a medication removes its dose history too; Stop keeps it. Deleting a visit cancels its reminders.
+The default low threshold is approximately three days of scheduled doses, with a minimum of one. UI warnings appear on Home and medication views. The UI suppresses a refill warning when the remaining course has enough supply. Notification bodies independently project a decreasing supply over upcoming unanswered doses; they do not use the same course-aware suppression. Neither estimate is a pharmacy inventory ledger or standalone refill job.
 
-## Simple mode
-- Settings → Simple mode: text ×1.25 everywhere the design system is used, bigger buttons and dose check, larger tab bar, week strip instead of the month grid, and no Lifestyle tab / quick-add icons.
+Counts refresh after server synchronization. A pending offline answer updates the dose row immediately, but not the server-backed supply count. At zero supply, changing taken back to skipped can add a unit even if the original decrement was clamped; this needs inventory-specific handling if exact stock accounting is required.
 
-## Time and date pickers
-- One in-app picker is used everywhere a time or date is chosen (medication dose times, food, exercise, doctor visits, the day navigator): `TimePanel` (hour grid, minute grid, AM/PM, ±1 minute) and `DatePanel` (month grid), opened inline under the field with a Done button.
-- It replaced the system date/time dialogs (`@react-native-community/datetimepicker`, now removed). On Android those dialogs are driven imperatively and could reopen on a later re-render — e.g. when tapping Save. A plain in-page panel has no such state, looks identical on every phone, and has large touch targets.
-- Times display in 12-hour form regardless of device locale; storage is unchanged (`"HH:MM"` for schedules, ISO instants elsewhere).
+## Editing and history
+
+- Medication name, dosage, notes, supply, and end date update in place. Earlier calendar rows can display edited labels, and changing the end date can change derived occurrences.
+- Editing dose times creates a new medication before archiving the old one. If archiving fails, the API attempts to delete the new row. These are separate requests, not a database transaction.
+- Stop archives the medication and retains earlier occurrences/answers. Delete removes the medication and its dose logs through cascade.
+- Custom reminder edits replace the rule in place; there is no schedule-version history or remapping of completion timestamps.
+- Visit changes refresh visit/calendar queries; notification changes depend on the sync lifecycle above.
+- Home custom-reminder toggles are optimistic and roll back on a failed save. Notification cancellation is not part of that rollback, and completion-only changes do not directly trigger the source-list effect used for replanning. Test completion and undo before relying on cancellation/restoration.
+
+## Presentation limits
+
+Simple Mode uses larger theme text/selected controls, collapses the calendar initially, and hides Lifestyle navigation and Home quick-add icons. Date/time fields use shared in-app panels. The picker uses a 12-hour clock; ordinary English time labels follow the device locale. Urdu behavior is documented in [Languages](LANGUAGES.md).
+
+The Home now marker, overdue rows, and date-dependent summaries update on render/data changes; they do not have a dedicated minute or midnight clock refresh. Timezone travel and day rollover need acceptance testing.
+
+## Device validation
+
+Use test accounts and disposable records. Record build, OS, timezone, language, and results rather than assuming the logic tests cover delivery.
+
+1. Add the first medication through onboarding, enter tabs, and verify its native pending reminder.
+2. Test dose and custom reminder actions in foreground, background, locked, and terminated states; relaunch to inspect persisted answers.
+3. Test permission denial/revocation, Android channels/build configuration, device reboot, and battery restrictions.
+4. Take/skip offline, restart offline, reconnect, and verify one answer and one supply adjustment.
+5. Complete/undo a custom reminder online/offline and inspect notification cancellation/restoration.
+6. Change schedules, stop/delete records with pending snoozes, and verify no stale notifications remain.
+7. Exercise many doses across family profiles, inspect the 60-item cap, and test schedule replenishment after inactivity.
+8. Switch accounts or delete an account with queued writes and replacement operations in flight.
+9. Check local midnight, daylight-saving changes, travel timezones, Urdu RTL, and large text.
+
+The local 2026-09-27 review passed typechecking and 103 logic tests. It did not execute this device checklist or validate deployed SQL policies/triggers.
