@@ -1,3 +1,4 @@
+import { dismissForm } from "../../lib/dismissForm";
 import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -70,7 +71,7 @@ export function AppointmentForm(props: Props) {
         await addAppointment.mutateAsync({ profileId: profile.id, ...fields });
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      router.dismiss();
+      dismissForm(router);
     } catch (err) {
       Alert.alert(appointment ? t("visits.form.errUpdate") : t("visits.form.errSave"), friendlyError(err));
     }
@@ -86,7 +87,7 @@ export function AppointmentForm(props: Props) {
         onPress: () =>
           deleteAppointment.mutate(appointment.id, {
             // The visit's detail screen underneath closes itself once its visit is gone.
-            onSuccess: () => router.dismiss(),
+            onSuccess: () => dismissForm(router),
             onError: (err) => Alert.alert(t("visits.form.errDelete"), friendlyError(err)),
           }),
       },
@@ -95,7 +96,7 @@ export function AppointmentForm(props: Props) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <SheetHeader title={editing ? t("visits.form.editTitle") : t("visits.form.addTitle")} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("visits.form.editTitle") : t("visits.form.addTitle")} onClose={() => dismissForm(router)} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
           {editing

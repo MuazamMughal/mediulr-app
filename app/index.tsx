@@ -1,19 +1,11 @@
-import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Redirect } from "expo-router";
-import type { Session } from "@supabase/supabase-js";
-import { supabase } from "../src/lib/supabase";
+import { useAuthSession } from "../src/features/auth/AuthSession";
 import { useTheme } from "../src/theme/ThemeProvider";
 
 export default function Index() {
   const theme = useTheme();
-  const [session, setSession] = useState<Session | null | undefined>(undefined);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-    return () => subscription.subscription.unsubscribe();
-  }, []);
+  const session = useAuthSession();
 
   if (session === undefined) {
     return (

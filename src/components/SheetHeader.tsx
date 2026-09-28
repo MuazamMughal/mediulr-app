@@ -13,7 +13,7 @@ export function SheetHeader({ title, onClose }: { title: string; onClose: () => 
   const { t } = useI18n();
   return (
     <View style={styles.row}>
-      <AppText variant="h2">{title}</AppText>
+      <AppText variant="h2" style={{ flex: 1, marginEnd: 12 }}>{title}</AppText>
       <Pressable
         onPress={onClose}
         hitSlop={10}
@@ -29,5 +29,5 @@ export function SheetHeader({ title, onClose }: { title: string; onClose: () => 
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 20, paddingHorizontal: 20 },
-  close: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
+  close: { width: 44, height: 44, flexShrink: 0, borderRadius: 22, alignItems: "center", justifyContent: "center" },
 });

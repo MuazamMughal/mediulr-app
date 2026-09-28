@@ -16,6 +16,7 @@ import { MonthCalendar } from "../../src/components/MonthCalendar";
 import { PeriodHeader, periodOf, type Period } from "../../src/components/PeriodHeader";
 import { friendlyError } from "../../src/lib/friendlyError";
 import { useActiveProfile } from "../../src/features/profile/ActiveProfile";
+import { useProfiles } from "../../src/features/profile/useProfiles";
 import { useCalendarEvents } from "../../src/features/calendar/useCalendarEvents";
 import { useMonthOverview } from "../../src/features/calendar/useMonthOverview";
 import { useAllMedications } from "../../src/features/medications/useMedications";
@@ -59,6 +60,7 @@ export default function CalendarScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { profile, isViewingSelf } = useActiveProfile();
+  const profilesQuery = useProfiles();
   const [day, setDay] = useState(() => new Date());
   const [month, setMonth] = useState(() => new Date());
   // Simple mode starts on the one-week strip instead of the full month grid.
@@ -68,7 +70,8 @@ export default function CalendarScreen() {
   const rangeEnd = useMemo(() => endOfLocalDay(day), [day]);
   const today = isToday(day);
 
-  const { data: calendarEvents, isLoading: dayLoading } = useCalendarEvents(profile?.id, rangeStart, rangeEnd);
+  const dayQuery = useCalendarEvents(profile?.id, rangeStart, rangeEnd);
+  const { data: calendarEvents, isLoading: dayLoading } = dayQuery;
   // Food and exercise load on their own, so a problem there can never hide medications or doctor visits.
   const { data: foodEntries, isLoading: foodLoading } = useFoodForRange(profile?.id, rangeStart, rangeEnd);
   const { data: exerciseEntries, isLoading: exerciseLoading } = useExerciseForRange(profile?.id, rangeStart, rangeEnd);
@@ -91,8 +94,10 @@ export default function CalendarScreen() {
     [calendarEvents, foodEntries, exerciseEntries, reminderEvents.events, pendingDoses]
   );
   const { data: overview } = useMonthOverview(profile?.id, month);
-  const { data: allMedications, isLoading: medsLoading } = useAllMedications(profile?.id);
-  const { data: allVisits, isLoading: visitsLoading } = useAppointments(profile?.id);
+  const medsQuery = useAllMedications(profile?.id);
+  const visitsQuery = useAppointments(profile?.id);
+  const { data: allMedications, isLoading: medsLoading } = medsQuery;
+  const { data: allVisits, isLoading: visitsLoading } = visitsQuery;
   // Guardians are optional extras: if they fail to load, the missed-dose row simply has no "Tell" button.
   const { data: guardians } = useGuardians(profile?.id);
   const toTell = useMemo(() => alertGuardians(guardians), [guardians]);
@@ -102,9 +107,10 @@ export default function CalendarScreen() {
   // "Loading" here is only the first load. Switching days keeps the calendar on screen and just skeletons the timeline.
   const noMedsOrVisits = (allMedications?.length ?? 0) === 0 && (allVisits?.length ?? 0) === 0 && (allReminders.isError || (allReminders.data?.length ?? 0) === 0);
   // Only wait on the meal/exercise lookups when they could change the answer, so the welcome screen never flashes the calendar first.
-  const isLoading = !profile || medsLoading || visitsLoading || (noMedsOrVisits && (anyFood.isLoading || anyExercise.isLoading || allReminders.isLoading));
+  const coreError = profilesQuery.error ?? medsQuery.error ?? visitsQuery.error ?? dayQuery.error;
+  const isLoading = !coreError && (!profile || medsLoading || visitsLoading || (noMedsOrVisits && (anyFood.isLoading || anyExercise.isLoading || allReminders.isLoading)));
   // Brand new = no medications, no visits, and no meals or activity either.
-  const hasNothingYet = !isLoading && noMedsOrVisits && noLogsYet;
+  const hasNothingYet = !coreError && !isLoading && noMedsOrVisits && noLogsYet;
 
   const medicationEvents = events?.filter((e) => e.kind === "medication") ?? [];
   const visitCount = events?.filter((e) => e.kind === "appointment").length ?? 0;
@@ -161,8 +167,10 @@ export default function CalendarScreen() {
 
   function handleToggleReminder(reminderId: string, scheduledAt: string, done: boolean) {
     Haptics.selectionAsync().catch(() => undefined);
-    if (done) cancelDoseReminders(reminderId, scheduledAt); // ticked off: its notification must not fire
-    toggleReminder.mutate({ reminderId, scheduledAt, done }, { onError: (err) => Alert.alert(t("common.couldntUpdate"), friendlyError(err)) });
+    toggleReminder.mutate({ reminderId, scheduledAt, done }, {
+      onSuccess: () => { if (done) void cancelDoseReminders(reminderId, scheduledAt); },
+      onError: (err) => Alert.alert(t("common.couldntUpdate"), friendlyError(err)),
+    });
   }
 
   const reminderCount = reminderEvents.events?.length ?? 0;
@@ -246,6 +254,16 @@ export default function CalendarScreen() {
         )}
       </View>
 
+      {!!coreError && (
+        <EmptyState
+          icon="cloud-offline-outline"
+          title={t("error.generic")}
+          description={friendlyError(coreError)}
+          actionLabel={t("common.tryAgain")}
+          onAction={() => { void Promise.all([profilesQuery.refetch(), medsQuery.refetch(), visitsQuery.refetch(), dayQuery.refetch()]); }}
+        />
+      )}
+
       {isLoading && (
         <View style={{ marginTop: 20 }}>
           <SkeletonRow />
@@ -262,7 +280,7 @@ export default function CalendarScreen() {
         />
       )}
 
-      {!isLoading && !hasNothingYet && (
+      {!coreError && !isLoading && !hasNothingYet && (
         <FlatList
           data={dayLoading ? [] : rows}
           keyExtractor={(r) => r.key}

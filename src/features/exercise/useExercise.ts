@@ -46,7 +46,7 @@ export function useAddExercise(profileId: string | undefined) {
       if (!profileId) throw new Error("No active profile");
       return addExercise(profileId, input);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -54,7 +54,7 @@ export function useUpdateExercise() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: ExerciseInput }) => updateExercise(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -62,6 +62,6 @@ export function useDeleteExercise() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteExercise(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }

@@ -48,7 +48,7 @@ export function useAddFood(profileId: string | undefined) {
       if (!profileId) throw new Error("No active profile");
       return addFood(profileId, input);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -56,7 +56,7 @@ export function useUpdateFood() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: FoodInput }) => updateFood(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -64,6 +64,6 @@ export function useDeleteFood() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteFood(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }

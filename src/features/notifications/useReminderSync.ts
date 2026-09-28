@@ -12,6 +12,7 @@ import { useI18n } from "../../i18n/LocaleProvider";
 import { doseOutbox } from "../offline/doseOutbox";
 import { doseKey } from "../offline/outbox";
 import { pendingDoseKeys } from "../offline/overlay";
+import { usePendingEdits } from "../offline/useEditSync";
 import { useProfiles } from "../profile/useProfiles";
 import { usePreferences } from "../preferences/Preferences";
 import { REMINDER_HORIZON_DAYS, planReminders } from "./plan";
@@ -30,6 +31,7 @@ export function useReminderSync() {
   const { data: profiles } = useProfiles();
   const { prefs } = usePreferences();
   const i18n = useI18n();
+  const pendingEdits = usePendingEdits();
   const { data: medications } = useQuery({ queryKey: ["medications", "all-profiles"], queryFn: listAllMedicationsForUser });
   const { data: appointments } = useQuery({ queryKey: ["appointments", "all-profiles"], queryFn: listAllAppointmentsForUser });
   // Optional: without guardians (or before that table exists) reminders just don't offer "Tell guardian".
@@ -87,5 +89,5 @@ export function useReminderSync() {
     sync();
     const sub = AppState.addEventListener("change", (state) => state === "active" && sync());
     return () => sub.remove();
-  }, [profiles, medications, appointments, guardians, prefs.followUps, customReminders, i18n]);
+  }, [profiles, medications, appointments, guardians, prefs.followUps, customReminders, i18n, pendingEdits]);
 }

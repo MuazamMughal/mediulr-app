@@ -1,6 +1,6 @@
 # Architecture
 
-Last reviewed against the repository: **2026-09-27**. See [Setup](SETUP.md) to run the app and [Roadmap](ROADMAP.md) for unfinished work.
+Last reviewed against the repository: **2026-09-28**. See [Setup](SETUP.md) to run the app and [Production readiness](PRODUCTION_READINESS.md) for release gates.
 
 ## Structure
 
@@ -26,7 +26,7 @@ app/                         Expo Router routes
   guardians.tsx              Guardian contact list
   reminders.tsx              Custom reminder list
   settings.tsx               Preferences, sign-out, account deletion
-  paywall.tsx                Subscription UI placeholder
+  paywall.tsx                Unavailable message for legacy Premium deep links
 src/
   components/                Shared controls and domain UI
   features/                  APIs, hooks, forms, and pure feature logic
@@ -43,9 +43,9 @@ There is no separate application server, subscription module, analytics integrat
 
 ## Startup and state
 
-`app/_layout.tsx` installs the web Alert adapter and wraps navigation in gesture/safe-area, preferences, locale, theme, persisted React Query, and active-profile providers. Preferences load before children render. The session check is in `app/index.tsx`; the root stack and tab layout do not themselves provide a centralized route authorization guard. Supabase policies enforce database ownership.
+`app/_layout.tsx` installs the web Alert adapter and wraps navigation in gesture/safe-area, preferences, locale, theme, persisted React Query, auth-session, and active-profile providers. Preferences load before children render. The root stack protects private routes from unauthenticated navigation, including direct links and expired sessions. Supabase policies enforce database ownership; client route protection is a presentation guard.
 
-After sign-up with a session, login opens onboarding. With confirmation required and no session, it displays a check-email message instead. The database sign-up trigger creates the account's self profile. Complete email-link handling and password recovery remain launch work.
+After sign-up with a session, login opens onboarding. With confirmation required and no session, it displays a check-email message. Email links return through `auth/callback`, which handles session tokens, authorization codes, and OTP hashes. Recovery links open a password form. The database sign-up trigger creates the account's self profile. The redirect allowlist, email templates, and delivery need deployment testing.
 
 State has three main homes:
 
@@ -68,7 +68,7 @@ The active profile defaults to the self profile and can be switched on Profile. 
 | `reminders` | Custom reminder CRUD, repeating occurrences, completion toggles |
 | `guardians` | Contacts, phone normalization, missed-dose message composition |
 | `notifications` | Pure notification planning, native scheduling, action handling, sync |
-| `offline` | Persistent dose outbox, immediate UI overlay, retries, cache patches |
+| `offline` | Persistent edit journal and fetched snapshots, plus the separate dose outbox and retries |
 | `preferences` | Persist follow-ups, Simple Mode, and language choice |
 
 Most features separate Supabase row mapping in `api.ts`, React Query hooks in `use*.ts`, reusable forms, and pure helpers. Database columns use snake_case; domain objects use camelCase. `src/types/database.ts` is maintained by hand; migrations are the schema source of truth.
@@ -93,15 +93,15 @@ flowchart TD
 
 `MonthCalendar` uses flash-calendar date math and custom day cells. It shows a month grid or one week with markers; selecting a day controls the timeline below. It is not a multi-day time-column agenda. Month dose/visit summaries use a separate query under `calendarEvents`; lifestyle/reminder markers use `useMonthLogs`.
 
-Medication and visit mutations invalidate their own query families and calendar queries. Food/exercise mutations invalidate their feature query families. Custom reminder CRUD invalidates `customReminders`; completion toggles optimistically update completion queries and roll back on failure. The dose queue overlays pending answers and patches calendar caches when the server confirms them.
+Record mutations persist ordered edits before reporting local success, then invalidate their query families. Reads overlay those edits on fetched device snapshots, so pending changes survive a restart and appear without a network response. Custom completion toggles also update the loaded completion queries immediately. The dose queue remains separate and overlays pending answers on calendar rows.
 
 ## Persistence and notification lifecycle
 
-Successful `profiles`, `medications`, `appointments`, `calendarEvents`, and `customReminders` queries are persisted for up to three days. Food, exercise, and guardian queries are excluded. This is a cache of fetched results, not a local database of every future day.
+Successful `profiles`, `medications`, `appointments`, `calendarEvents`, `customReminders`, `foodEntries`, `exerciseEntries`, and `guardians` queries are persisted for up to three days. Fetched row snapshots are stored separately for offline edits. Neither store contains records or calendar days the app has never fetched.
 
-`useDoseSync` and `useReminderSync` mount in the tab layout. The former retries queued dose answers; the latter builds and applies notification plans when its data/settings change and when the app returns to the foreground. `useNotificationActions` mounts at the root to handle response events and the last response at launch. There is no registered headless notification task or background schedule-refresh service.
+`useDoseSync` and `useReminderSync` mount in the tab layout. `useEditSync` mounts at the root and retries queued edits at startup, on foreground, and every 20 seconds while JavaScript is active. Dose sync retries its own queue; reminder sync builds and applies notification plans when data/settings change and on foreground. `useNotificationActions` handles response events and the last response at launch. There is no registered headless notification task or background schedule-refresh service.
 
-On `SIGNED_OUT`, the root listener clears React Query, removes persisted query data, clears the dose outbox, and requests cancellation of scheduled notifications. Device preferences remain. See [Reliability](RELIABILITY.md) for limits and unresolved lifecycle cases.
+On `SIGNED_OUT`, the root listener clears React Query, persisted query data, record snapshots, both outboxes, and pending notifications. Device preferences remain. See [Reliability](RELIABILITY.md) for limits and unresolved lifecycle cases.
 
 ## Interface and localization
 
@@ -115,4 +115,4 @@ The icon generator has its own `ORANGE` constant; it does not import the theme. 
 
 ## Verification scope
 
-The logic tests cover scheduling, date handling, timeline merging, outbox behavior, notification payloads/plans, guardian messages, and translations. No UI automation, live database policy tests, or device notification delivery tests are included. The last local review passed typechecking and 103 tests; deployment state was not checked.
+The 113 logic tests cover scheduling, date handling, timeline merging, both queue behaviors, auth-link parsing, notification payloads/plans, guardian messages, and translations. Playwright runs ten rendered workflow scenarios at phone and desktop widths, using intercepted Supabase responses; see [Functional and UI audit](FUNCTIONAL_UI_AUDIT.md). Live database policies, deployment state, and device notification delivery were not checked.

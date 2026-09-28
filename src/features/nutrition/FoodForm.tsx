@@ -1,3 +1,4 @@
+import { dismissForm } from "../../lib/dismissForm";
 import { useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -86,7 +87,7 @@ export function FoodForm(props: Props) {
       if (entry) await updateFood.mutateAsync({ id: entry.id, input });
       else await addFood.mutateAsync(input);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      router.dismiss();
+      dismissForm(router);
     } catch (err) {
       Alert.alert(entry ? t("food.form.errUpdate") : t("food.form.errSave"), friendlyError(err));
     }
@@ -101,7 +102,7 @@ export function FoodForm(props: Props) {
         style: "destructive",
         onPress: () =>
           deleteFood.mutate(entry.id, {
-            onSuccess: () => router.dismiss(),
+            onSuccess: () => dismissForm(router),
             onError: (err) => Alert.alert(t("food.form.errDelete"), friendlyError(err)),
           }),
       },
@@ -112,7 +113,7 @@ export function FoodForm(props: Props) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <SheetHeader title={editing ? t("food.form.editTitle") : t("food.form.addTitle")} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("food.form.editTitle") : t("food.form.addTitle")} onClose={() => dismissForm(router)} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         {!editing && profile && !profile.isSelf && (
           <AppText variant="bodySmall" color="secondary" style={styles.subheading}>

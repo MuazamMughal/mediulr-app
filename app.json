@@ -35,6 +35,7 @@
         }
       ],
       "expo-secure-store",
+      "expo-notifications",
       "expo-localization"
     ],
     "extra": {

@@ -28,9 +28,9 @@ async function handleResponse(response: Response): Promise<void> {
   if (action && reminder) {
     const { t } = getI18n();
     if (action === ACTION.take) {
-      await cancelDoseReminders(reminder.reminderId, reminder.scheduledAt);
       try {
         await completeReminder(reminder.reminderId, reminder.scheduledAt);
+        await cancelDoseReminders(reminder.reminderId, reminder.scheduledAt);
         getSharedQueryClient()?.invalidateQueries({ queryKey: ["customReminders"] });
       } catch (err) {
         console.warn("Couldn't save the completed reminder", err);

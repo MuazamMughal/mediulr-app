@@ -14,6 +14,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  // React Query and the persistent outboxes own retries. SDK retries delay offline snapshots.
+  db: { retry: false },
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

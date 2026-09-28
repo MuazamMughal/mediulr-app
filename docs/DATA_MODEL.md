@@ -212,4 +212,4 @@ The interval-hours implementation starts from the effective query lower bound, n
 - `delete_my_account()` requires an authenticated caller, removes their legacy reminder rows, then deletes their auth user. Foreign-key cascades remove owned profiles and child records.
 - Account deletion does not define backup retention or erase already sent SMS messages. Those are separate data-handling concerns in [Compliance](COMPLIANCE.md).
 
-There are no provider, clinic, booking, messaging, allergy, or condition tables. Local auth, caches, preferences, and queued dose answers are described in [Reliability](RELIABILITY.md).
+There are no provider, clinic, booking, messaging, allergy, or condition tables. Local auth, caches, preferences, queued record edits, and queued dose answers are described in [Reliability](RELIABILITY.md).

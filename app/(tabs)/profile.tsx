@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { AppText } from "../../src/components/AppText";
 import { AppCard } from "../../src/components/AppCard";
+import { AppButton } from "../../src/components/AppButton";
 import { Avatar } from "../../src/components/Avatar";
 import { Divider } from "../../src/components/Divider";
 import { friendlyError } from "../../src/lib/friendlyError";
@@ -29,7 +30,7 @@ function NavRow({
 }) {
   const theme = useTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}>
       <View style={[styles.navIcon, { backgroundColor: iconBg }]}>
         <Ionicons name={icon} size={17} color={iconColor} />
       </View>
@@ -52,6 +53,18 @@ export default function ProfileScreen() {
   const addDependent = useAddDependentProfile();
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
+
+  async function saveFamilyMember() {
+    const displayName = newName.trim();
+    if (!displayName || addDependent.isPending) return;
+    try {
+      await addDependent.mutateAsync({ displayName });
+      setNewName("");
+      setAdding(false);
+    } catch (err) {
+      Alert.alert(t("profile.errAdd"), friendlyError(err));
+    }
+  }
 
   const self = profiles?.find((p) => p.isSelf);
 
@@ -121,24 +134,19 @@ export default function ProfileScreen() {
                   <TextInput
                     style={[styles.addInput, { borderColor: theme.colors.border, color: theme.colors.textPrimary }]}
                     placeholder={t("profile.namePlaceholder")}
+                    accessibilityLabel={t("profile.namePlaceholder")}
                     placeholderTextColor={theme.colors.textTertiary}
                     value={newName}
                     onChangeText={setNewName}
                     autoFocus
-                    onSubmitEditing={() => {
-                      const displayName = newName.trim();
-                      if (!displayName) return;
-                      addDependent.mutate(
-                        { displayName },
-                        { onError: (err) => Alert.alert(t("profile.errAdd"), friendlyError(err)) }
-                      );
-                      setNewName("");
-                      setAdding(false);
-                    }}
+                    onSubmitEditing={saveFamilyMember}
                   />
+                  <View style={{ marginTop: 12 }}>
+                    <AppButton label={t("common.save")} onPress={saveFamilyMember} disabled={!newName.trim()} loading={addDependent.isPending} />
+                  </View>
                 </View>
               ) : (
-                <Pressable style={styles.addRow} onPress={() => setAdding(true)}>
+                <Pressable accessibilityRole="button" accessibilityLabel={t("profile.addMember")} style={styles.addRow} onPress={() => setAdding(true)}>
                   <View style={[styles.navIcon, { backgroundColor: theme.colors.surfaceSunken }]}>
                     <Ionicons name="add" size={18} color={theme.colors.accent} />
                   </View>
@@ -149,7 +157,7 @@ export default function ProfileScreen() {
               )}
             </AppCard>
 
-            {/* Premium & Settings */}
+            {/* Reminders & Settings */}
             <AppText variant="caption" color="secondary" style={styles.sectionLabel}>
               {t("profile.accountSection")}
             </AppText>
@@ -160,14 +168,6 @@ export default function ProfileScreen() {
                 iconBg={theme.colors.reminderSoft}
                 label={t("reminders.title")}
                 onPress={() => router.push("/reminders")}
-              />
-              <Divider style={{ marginStart: 68 }} />
-              <NavRow
-                icon="sparkles"
-                iconColor={theme.colors.accent}
-                iconBg={theme.colors.accentSoft}
-                label={t("profile.premium")}
-                onPress={() => router.push("/paywall")}
               />
               <Divider style={{ marginStart: 68 }} />
               <NavRow

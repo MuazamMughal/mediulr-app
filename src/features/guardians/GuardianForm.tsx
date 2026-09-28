@@ -1,5 +1,7 @@
+import { dismissForm } from "../../lib/dismissForm";
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
+import { AppSwitch } from "../../components/AppSwitch";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -55,7 +57,7 @@ export function GuardianForm(props: Props) {
       if (guardian) await updateGuardian.mutateAsync({ id: guardian.id, input });
       else await addGuardian.mutateAsync(input);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      router.dismiss();
+      dismissForm(router);
     } catch (err) {
       const message = String((err as { message?: string } | null)?.message ?? "");
       Alert.alert(
@@ -74,7 +76,7 @@ export function GuardianForm(props: Props) {
         style: "destructive",
         onPress: () =>
           deleteGuardian.mutate(guardian.id, {
-            onSuccess: () => router.dismiss(),
+            onSuccess: () => dismissForm(router),
             onError: (err) => Alert.alert(t("guardians.form.errRemove"), friendlyError(err)),
           }),
       },
@@ -83,7 +85,7 @@ export function GuardianForm(props: Props) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <SheetHeader title={editing ? t("guardians.form.editTitle") : t("guardians.form.addTitle")} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("guardians.form.editTitle") : t("guardians.form.addTitle")} onClose={() => dismissForm(router)} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
           {profile && !profile.isSelf ? t("guardians.form.introFor", { name: profile.displayName }) : t("guardians.form.intro")}
@@ -125,7 +127,7 @@ export function GuardianForm(props: Props) {
               {t("guardians.form.offerHint", { name: trimmedName.split(" ")[0] || t("guardians.form.offerThem") })}
             </AppText>
           </View>
-          <Switch
+          <AppSwitch
             value={notify}
             onValueChange={setNotify}
             trackColor={{ true: theme.colors.accent, false: theme.colors.borderStrong }}

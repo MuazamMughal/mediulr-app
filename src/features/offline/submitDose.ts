@@ -2,6 +2,7 @@ import { logDose } from "../medications/api";
 import { doseOutbox } from "./doseOutbox";
 import { doseKey, type FlushResult, type PendingDose } from "./outbox";
 import type { DoseLog } from "../../types/domain";
+import { editStore, flushEdits } from "./editApi";
 
 type SyncListener = (result: FlushResult) => void;
 const listeners = new Set<SyncListener>();
@@ -27,7 +28,12 @@ export function onDoseSaved(listener: SavedListener): () => void {
 
 /** Sends every queued answer. Safe to call any time, from anywhere; overlapping calls run one after another. */
 export async function flushDoseOutbox(): Promise<FlushResult> {
+  // A dose for a medication created offline cannot be saved until that medication exists on the server.
+  await flushEdits().catch(() => undefined);
   const result = await doseOutbox.flush(async (item) => {
+    if (editStore.list().some((edit) => edit.table === "medications" && edit.id === item.medicationId && edit.action === "create")) {
+      throw new Error("Medication creation is still waiting to sync");
+    }
     const saved = await logDose(item.medicationId, item.scheduledAt, item.status, new Date(item.queuedAt).toISOString());
     savedListeners.forEach((l) => l(item, saved));
   });
@@ -43,7 +49,8 @@ export interface DoseAnswer {
 
 /**
  * Records an answer without depending on the network: it is queued (and shows as answered at once), then sent.
- * "queued" means it is safe on the device and will sync when a connection returns.
+ * "queued" means the answer is pending. Device storage can fail silently, so this does not guarantee
+ * the answer will survive an app restart; syncing also requires the app to run again.
  */
 export async function submitDose(answer: DoseAnswer): Promise<"synced" | "queued" | "dropped"> {
   await doseOutbox.enqueue(answer);

@@ -44,7 +44,7 @@ export function useAllMedications(profileId: string | undefined) {
 function useInvalidateMedicationData() {
   const queryClient = useQueryClient();
   return () =>
-    Promise.all([
+    void Promise.all([
       queryClient.invalidateQueries({ queryKey: ["medications"] }),
       queryClient.invalidateQueries({ queryKey: ["calendarEvents"] }),
     ]);
@@ -103,10 +103,11 @@ export function useLogDose() {
       status: DoseStatus;
     }) => logDose(medicationId, scheduledAt, status),
     // A taken dose also counts the supply down, so the medication list refreshes too.
-    onSuccess: () =>
-      Promise.all([
+    onSuccess: () => {
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["calendarEvents"] }),
         queryClient.invalidateQueries({ queryKey: ["medications"] }),
-      ]),
+      ]);
+    },
   });
 }

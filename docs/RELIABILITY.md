@@ -1,6 +1,6 @@
 # Reliability
 
-Last reviewed: **2026-09-27**. This describes implemented behavior and known limits. Local notifications, storage, and background execution are not guarantees that a dose reminder will always be delivered or answered.
+Last reviewed: **2026-09-28**. This describes implemented behavior and known limits. Local notifications, storage, and background execution are not guarantees that a dose reminder will always be delivered or answered.
 
 ## Notification plan
 
@@ -33,7 +33,7 @@ Action categories and payload parsing live in `notifications/actions.ts`; regist
 - **Taken / Skip:** enqueue the dose answer, attempt synchronization, and request cancellation of that occurrence's main notification, follow-ups, and snoozes.
 - **Snooze:** schedule another notification ten minutes from the tap. It does not save a snoozed dose status or cancel other follow-ups.
 - **Tell guardian:** fetch eligible contacts and open a prefilled SMS, falling back to sharing. The patient decides whether to send it.
-- **Done** on a custom reminder: write its completion directly to Supabase and cancel that occurrence's notifications. There is no persistent completion outbox; failures in this notification handler are logged.
+- **Done** on a custom reminder: persist its completion in the edit queue, then cancel that occurrence's notifications. Replay to Supabase runs when connectivity returns.
 - A plain notification tap opens the app; it does not navigate to a particular record.
 
 The root listener handles responses while JavaScript is running and checks the last notification response at launch. Taken/Skip/Done/Snooze are configured not to foreground the app; Tell guardian does foreground it. No headless task is registered, so the current code must not be described as guaranteeing immediate action handling while terminated. Duplicate-response suppression is in memory for the current process.
@@ -44,18 +44,23 @@ Expo's Android Expo Go limitation since SDK 53 concerns remote push; its documen
 
 | Data/action | Current behavior |
 |---|---|
-| Profiles, medications, appointments | Successful query results persist in AsyncStorage |
-| Daily calendar and month dose/visit summaries | Persist under the `calendarEvents` query family |
-| Custom reminder lists/completions | Successful queries persist under `customReminders` |
-| Food, exercise, guardian queries | Excluded from persisted query cache |
-| Taken/skipped dose answers | Persistent retry queue with immediate timeline overlay |
-| Custom completion/undo and all other edits | Network writes; no persistent write queue |
+| Previously fetched records and calendar ranges | AsyncStorage snapshots and a three-day persisted query cache |
+| Supported profile, medication, visit, food, exercise, guardian, reminder, and completion changes | Ordered persistent queue and immediate local projection |
+| Taken/skipped dose answers | Separate retry queue with attempted device persistence and immediate timeline overlay |
 
-The query cache uses `mediulr:query-cache`, a three-day maximum age, and a version buster. It contains fetched queries, not every possible day. A previously unopened day can require a network fetch even when medication lists are cached. Restoration also depends on a usable auth session and successful device storage.
+The query cache uses `mediulr:query-cache`, a three-day maximum age, and a version buster. Fetched row snapshots use `mediulr:edit-snapshots:v1`; queued edits use `mediulr:edit-outbox:v1`. These contain fetched records and local changes, not every possible day. A previously unopened day may have no historical data while offline. Restoration depends on a usable auth session and device storage.
+
+### Record edit queue
+
+Create, update, delete, and custom completion changes are written to AsyncStorage before the form reports success. They overlay fetched snapshots immediately, including after restart. The queue replays in order at startup, on foreground, and every 20 seconds while the app runs. A child edit waits behind an unsynced parent, and dose answers for a newly created medication wait for that medication to sync. There is no OS background worker while the app is suspended.
+
+Transient failures leave edits queued. A database rejection marks the first affected edit as failed and blocks later edits in the queue; the tab banner offers Retry or Discard. Discard removes the rejected edit but may leave dependent edits that then reject separately. Device-storage failure rejects the edit instead of claiming it was saved. Server writes use client-generated IDs and existence checks to avoid duplicate creates after a lost acknowledgement. A server-side deletion of a record before a queued update replays is reported as a failed edit.
+
+The UI projects pending edits over the most recent fetched snapshot. It cannot show historical rows never fetched on that device. Snapshot storage is not a complete local replica, and edits from another device are reconciled when server reads resume. Sign-out warns about pending edits and clears them with the snapshots; account deletion still requires connectivity.
 
 ### Dose outbox
 
-The queue in `features/offline` stores one answer per `(medicationId, scheduledAt epoch)` under `mediulr:dose-outbox`, including the original answer time. A later answer replaces the earlier one. UI overlays apply it immediately; confirmed answers patch loaded calendar arrays before the queue entry is removed.
+The queue in `features/offline` keeps one answer per `(medicationId, scheduledAt epoch)` and attempts to save it under `mediulr:dose-outbox`, including the original answer time. A later answer replaces the earlier one. UI overlays apply it immediately; confirmed answers patch loaded calendar arrays before the queue entry is removed. The save can fail silently, leaving the answer only in memory for the current app session.
 
 Flushes run sequentially at tab startup, on foreground, and on a 20-second timer while entries are waiting and JavaScript is active. Transient failures retain entries; database errors in the configured permanent-error classes and entries older than seven days are dropped during flush. The mounted sync hook reports dropped entries. There is no OS background worker guaranteeing retries while suspended.
 
@@ -63,7 +68,7 @@ Storage errors are swallowed so the current session can continue in memory. Cons
 
 ### Cleanup
 
-The `SIGNED_OUT` listener clears in-memory queries, requests persisted-cache removal, clears the dose queue, and cancels pending native notifications. Account deletion calls `delete_my_account()` and then signs out locally. Device preferences remain. These asynchronous cleanup paths need testing alongside in-flight saves and notification replacements; there is no transactional cancellation of all ongoing work.
+The `SIGNED_OUT` listener clears in-memory queries, requests persisted-cache removal, clears both edit and dose queues and record snapshots, and cancels pending native notifications. Account deletion calls `delete_my_account()` and then signs out locally. Device preferences remain. These asynchronous cleanup paths need testing alongside in-flight saves and notification replacements; there is no transactional cancellation of all ongoing work.
 
 ## Refill tracking
 
@@ -76,11 +81,11 @@ Counts refresh after server synchronization. A pending offline answer updates th
 ## Editing and history
 
 - Medication name, dosage, notes, supply, and end date update in place. Earlier calendar rows can display edited labels, and changing the end date can change derived occurrences.
-- Editing dose times creates a new medication before archiving the old one. If archiving fails, the API attempts to delete the new row. These are separate requests, not a database transaction.
+- Editing dose times queues creation of a new medication before archiving the old one. Replay is ordered, but these remain separate server requests, not a database transaction. A rejected archive can leave the new row saved and will appear in the failed-edit banner.
 - Stop archives the medication and retains earlier occurrences/answers. Delete removes the medication and its dose logs through cascade.
 - Custom reminder edits replace the rule in place; there is no schedule-version history or remapping of completion timestamps.
 - Visit changes refresh visit/calendar queries; notification changes depend on the sync lifecycle above.
-- Home custom-reminder toggles are optimistic and roll back on a failed save. Notification cancellation is not part of that rollback, and completion-only changes do not directly trigger the source-list effect used for replanning. Test completion and undo before relying on cancellation/restoration.
+- Home custom-reminder toggles are optimistic while the persistent queue accepts them, and roll back if device persistence fails. Notification replanning subscribes to queued edits; test completion and undo on devices before relying on cancellation/restoration.
 
 ## Presentation limits
 
@@ -102,4 +107,4 @@ Use test accounts and disposable records. Record build, OS, timezone, language, 
 8. Switch accounts or delete an account with queued writes and replacement operations in flight.
 9. Check local midnight, daylight-saving changes, travel timezones, Urdu RTL, and large text.
 
-The local 2026-09-27 review passed typechecking and 103 logic tests. It did not execute this device checklist or validate deployed SQL policies/triggers.
+The local 2026-09-28 review passed typechecking, 113 logic tests, and a web export. [Functional and UI audit](FUNCTIONAL_UI_AUDIT.md) covers browser workflows with intercepted backend responses, including offline reload and replay. PostgREST SDK retries are disabled so the app can reach snapshots promptly; queries and queues handle retries. This review did not execute the native-device checklist or validate deployed SQL policies/triggers.

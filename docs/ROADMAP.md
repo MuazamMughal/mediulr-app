@@ -1,17 +1,18 @@
 # Roadmap
 
-Status reviewed against the repository on **2026-09-27**. Checked items mean implemented in code, not verified in production. This replaces the earlier month-based estimates; no release dates are committed here.
+Status reviewed against the repository on **2026-09-28**. Checked items mean implemented in code, not verified in production. This replaces the earlier month-based estimates; no release dates are committed here.
 
 ## Implemented
 
 - [x] Expo Router / React Native / TypeScript app with Supabase Auth and Postgres access.
 - [x] Six SQL migrations covering ownership policies, profile creation, account deletion, lifestyle logs, guardians, supply adjustment, and custom reminders.
-- [x] Email/password sign-in/sign-up and basic onboarding.
+- [x] Email/password sign-in/sign-up, protected routes, email-link callbacks, password recovery UI, and basic onboarding.
 - [x] Unified daily timeline for doses, visits, meals, exercise, and custom reminders.
 - [x] Selectable month grid and collapsible week strip with per-day markers.
 - [x] Medication creation with 1–4 daily dose times, duplicate-time validation, ongoing courses, preset durations, and custom courses up to 365 days.
 - [x] Medication editing, schedule replacement, stopping, deletion, and completed/stopped lists.
 - [x] Taken/skipped dose answers, immediate UI updates, persistent retry queue, and cached schedule queries.
+- [x] Persistent offline queue and local display for supported profile, medication, visit, food, exercise, guardian, and custom reminder/completion changes.
 - [x] Supply countdown through a database trigger, low-supply UI, and projected refill notes in dose notifications.
 - [x] Manual visit creation/editing/deletion and pre/post-visit notes.
 - [x] Food and exercise creation/editing/deletion, daily summaries, and calendar markers.
@@ -23,7 +24,8 @@ Status reviewed against the repository on **2026-09-27**. Checked items mean imp
 - [x] Shared themed components, form sheets, haptics, in-app date/time pickers, and browser Alert adapter.
 - [x] Account deletion UI/RPC and sign-out cache/queue/notification cleanup paths.
 - [x] EAS preview APK and production build profile configuration.
-- [x] Typechecking and 103 passing logic tests in the 2026-09-27 local review.
+- [x] Typechecking and 113 logic tests in the local review.
+- [x] GitHub Actions workflow for dependency install, typechecking, and logic tests.
 
 ## Reliability and release validation
 
@@ -32,7 +34,7 @@ Status reviewed against the repository on **2026-09-27**. Checked items mean imp
 - [ ] Address schedule renewal when the app stays closed beyond the planned horizon or the 60-item cap shortens coverage.
 - [ ] Validate notification replacement races, preserved snoozes after edits/deletion, and custom-reminder completion/undo behavior.
 - [ ] Verify first-medication onboarding and direct-route behavior: reminder/dose sync hooks currently mount only in the tab layout.
-- [ ] Validate offline restoration, storage-write failures, prolonged disconnection, and cleanup with in-flight requests.
+- [ ] Validate offline restoration, storage-write failures, rejected edits, prolonged disconnection, and cleanup with in-flight requests on devices.
 - [ ] Improve consistent loading/error/retry behavior on core calendar, medication, and profile screens.
 - [ ] Add integration/device coverage for the above; current tests exercise pure logic, not delivery or database enforcement.
 
@@ -40,7 +42,7 @@ See [Reliability](RELIABILITY.md) for the implemented guarantees and limits. Aut
 
 ## Before public launch
 
-- [ ] Complete email-confirmation links, password recovery, and authenticated navigation/session-expiry handling.
+- [ ] Validate confirmation and recovery email links, redirect allowlists, SMTP delivery, and session expiry on web and standalone builds.
 - [ ] Connect RevenueCat/store purchases, restoration, entitlements, and trusted server updates. Paywall UI currently has no purchase behavior.
 - [ ] Review deployed security settings, local storage choices, privacy disclosures, retention, and incident handling; see [Compliance](COMPLIANCE.md).
 - [ ] Implement user data export/portability. Account deletion is implemented but needs deployment verification.

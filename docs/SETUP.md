@@ -1,6 +1,6 @@
 # Setup
 
-Last reviewed: **2026-09-27**. These steps describe the checked-in configuration; they do not confirm which migrations or settings are deployed to the connected project.
+Last reviewed: **2026-09-28**. These steps describe the checked-in configuration; they do not confirm which migrations or settings are deployed to the connected project.
 
 ## Requirements
 
@@ -53,13 +53,13 @@ The repository does not include `supabase/config.toml` or a ready-to-run local S
 
 Missing later migrations affect their features: deletion reports a setup error, food/exercise or custom reminders fail to load, guardians are unavailable, and supply does not count down without `0005`. See [Data model](DATA_MODEL.md).
 
-## 3. Configure test authentication
+## 3. Configure authentication
 
 Login uses Supabase email/password authentication. Sign-up creates a self profile through the database trigger.
 
 For isolated development, either use confirmed test accounts or disable email confirmation in the test project's auth settings. When confirmation is enabled and sign-up returns no session, the app tells the user to check email and stays at login.
 
-The app has the `mediulr` URL scheme, but no complete auth callback or password-reset flow. `detectSessionInUrl` is disabled in the client. Production confirmation/recovery needs implementation and testing; adding an allowed redirect URL alone does not complete it.
+The app has the `mediulr` URL scheme. Sign-up and password-reset emails redirect to `auth/callback`; its route completes the Supabase session and opens onboarding or the password form. The client keeps `detectSessionInUrl` disabled because the callback handles links. In Supabase Auth → URL Configuration, allow the exact callback URLs used by each target: `mediulr://auth/callback?flow=signup`, `mediulr://auth/callback?flow=recovery`, and the equivalent deployed web URLs if web is supported. Development URLs from Expo Go differ from standalone URLs; inspect the generated `authRedirectUrl()` and allow only the development URLs needed for testing. Configure the email templates to preserve `RedirectTo`, and test confirmation and recovery on a standalone build before release. Supabase documents [mobile deep links](https://supabase.com/docs/guides/auth/native-mobile-deep-linking) and [redirect URL allowlists](https://supabase.com/docs/guides/auth/redirect-urls).
 
 ## 4. Run locally
 
@@ -70,7 +70,8 @@ The app has the `mediulr` URL scheme, but no complete auth callback or password-
 | `npm run ios` | Start Expo targeting iOS |
 | `npx expo start --web` | Browser preview |
 | `npm run typecheck` | TypeScript validation |
-| `npm test` | All six logic test files |
+| `npm test` | All eight logic test files |
+| `npm run test:ui` | Export and run phone/desktop Playwright browser tests |
 
 The Android/iOS npm scripts start the development server; they do not build a standalone app. Native folders are generated and ignored by Git.
 
@@ -82,7 +83,7 @@ Mediulr schedules **local** notifications. It does not obtain push tokens or sen
 
 Some source comments still attribute all notification limitations to Expo Go; the actual wrapper attempts lazy loading and catches module errors. Permission denial or scheduling failure can leave records saved without notifications. Check permissions and device logs, then follow the [device checklist](RELIABILITY.md#device-validation).
 
-`app.json` currently has no explicit `expo-notifications` plugin entry, and scheduling code does not configure an Android notification channel. Review the native setup against the target build and Expo's documentation before relying on delivery. Background action processing is not fully implemented or verified.
+`app.json` includes the `expo-notifications` config plugin, and scheduling code creates an Android reminder channel before requesting permission or scheduling. Rebuild the native app after changing plugin configuration; Metro reload alone does not apply it. Review delivery and action behavior on the target build against [Expo's notification documentation](https://docs.expo.dev/versions/latest/sdk/notifications/). Background action processing is not fully implemented or verified.
 
 ## 6. EAS build profiles
 
@@ -110,7 +111,7 @@ npm run typecheck
 npm test
 ```
 
-The 2026-09-27 review passed both checks: 103 tests across `logic`, `health`, `guardians`, `reliability`, `i18n`, and `reminders`. No lint script, UI test runner, CI workflow, or database integration test suite is checked in.
+The local review passed both checks: 113 tests across `logic`, `health`, `guardians`, `reliability`, `i18n`, `reminders`, `offline-edits`, and `auth-links`. Playwright browser tests are also checked in; install Chromium with `npx playwright install chromium`, then run `npm run test:ui`. On older macOS with installed Chrome, use `PLAYWRIGHT_BROWSER_CHANNEL=chrome npm run test:ui`. See [Functional and UI audit](FUNCTIONAL_UI_AUDIT.md) for scope and artifacts. GitHub Actions runs the logic and browser checks; the hosted workflow itself has not been verified. No lint script or live database integration suite is checked in.
 
 Database types in `src/types/database.ts` are hand-maintained. After verifying the live schema, generate candidate types to a temporary file for review rather than overwriting the source blindly:
 
@@ -137,9 +138,10 @@ The script owns its color constants independently of the theme and rewrites the 
 | Supply never decreases | Migration `0005`; the dose must be saved as taken |
 | Notification does not fire | Permission, native module/build configuration, scheduling logs, notification cap, foreground refresh |
 | Offline day has no data | That day may not have been fetched before; persistence is a query cache |
+| An edit remains pending | Reopen the app with connectivity; a rejected edit appears in the tab banner with Retry and Discard actions |
 | Urdu text changes but layout does not | Close and reopen the native app to apply direction |
 | Tests fail with an IPC socket permission error | `tsx` needs permission to create its local IPC socket in restricted execution environments |
 
 ## Billing remains unconfigured
 
-The paywall's subscribe action dismisses the screen and Restore has no handler. There is no RevenueCat SDK, entitlement gate, webhook, or purchase backend. The `subscriptions` table is reserved for a future integration. Implement and test store products, purchases/restoration, trusted entitlement updates, and access rules before treating the displayed price as an available subscription.
+The Profile tab no longer advertises the purchase mockup. Direct links to `/paywall` show an unavailable message. There is no RevenueCat SDK, entitlement gate, webhook, or purchase backend. The `subscriptions` table is reserved for a future integration. Implement and test store products, purchases/restoration, trusted entitlement updates, and access rules before offering a subscription.

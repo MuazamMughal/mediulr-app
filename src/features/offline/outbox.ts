@@ -1,7 +1,8 @@
 /**
- * A durable queue of dose answers ("taken" / "skipped") that couldn't be saved yet.
- * Answering a dose must never depend on the network: the answer is queued (and shown as done straight away),
- * then sent whenever a connection allows. Storage is injected so this stays plain, testable logic.
+ * A retry queue of dose answers ("taken" / "skipped") that couldn't be saved yet.
+ * Answers appear immediately and are sent when the network allows. Device persistence is best effort:
+ * a storage failure leaves the answer in memory for this session only.
+ * Storage is injected so this stays plain, testable logic.
  */
 export interface PendingDose {
   medicationId: string;

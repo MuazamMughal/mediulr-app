@@ -18,7 +18,7 @@ Patient-controlled PDF/data export remains planned. No export feature should be 
 |---|---|
 | Supabase Auth | Account credentials/session management |
 | Supabase Postgres | Profiles, medications/dose answers, visit notes, meals, exercise, guardian contacts, custom reminders/completions |
-| Device AsyncStorage | Auth session, selected query cache, pending dose answers, preferences |
+| Device AsyncStorage | Auth session, fetched health-record snapshots and query cache, pending record edits and dose answers, preferences |
 | Native notification system | Titles, dosage/reminder text, optional dependent names, and action payloads |
 | SMS/share target chosen by the patient | Prefilled missed-dose message, with medication/dosage/time and a dependent name when applicable |
 
@@ -31,8 +31,8 @@ No Supabase Storage file-upload flow, analytics SDK, RevenueCat integration, or 
 - Every public table enables RLS; policies scope health records to the owner through profiles. Subscriptions are read-only to the owning client.
 - Client configuration uses a public Supabase key. Server/service-role secrets must not be bundled as `EXPO_PUBLIC_*` variables.
 - Account deletion invokes the authenticated `delete_my_account()` function; owned records cascade when the auth user is deleted, with legacy reminder rows explicitly removed first.
-- Sign-out initiates query-cache, outbox, and pending-notification cleanup. Preferences remain on the device.
-- Persistent query caching excludes food, exercise, and guardian queries. It includes profiles, medications, visits, calendar results, and custom reminder queries.
+- Sign-out initiates query-cache, record-snapshot, both outbox, and pending-notification cleanup. Preferences remain on the device.
+- Persistent caching includes food, exercise, guardian, profile, medication, visit, calendar, and custom reminder queries. Offline edits add separately stored record snapshots and a pending edit journal.
 - There is no analytics or advertising integration in the current dependency/application code.
 
 These controls are implemented, but live database policies, deployed functions, and concurrent lifecycle behavior still need validation. The client uses AsyncStorage for auth and cached health data; it does not add application-level encryption or use the installed SecureStore module for those records. There is no biometric app lock. Do not claim encrypted local storage based on the presence of a dependency.
@@ -53,7 +53,7 @@ Other jurisdictional privacy requirements and app-store policies should be asses
 - [ ] Verify deployed migrations, RLS isolation between accounts, account-deletion cascades, and client key privileges using separate test accounts.
 - [ ] Review transport/storage protections, hosting region, access controls, backups, logs, and retention in the deployed service; repository settings alone cannot establish them.
 - [ ] Review local session/health-data storage and lock-screen exposure against the intended threat model.
-- [ ] Define handling of unsynced answers, logout, session expiry, device loss, deletion, and backup retention.
+- [ ] Validate handling of unsynced edits and answers, logout, session expiry, device loss, deletion, and backup retention.
 - [ ] Implement and validate user export/portability. Distinguish implemented account deletion from yet-to-be-built export.
 - [ ] Document incident assessment and notification procedures appropriate to the actual deployment.
 - [ ] Review dependent/guardian data collection, user consent wording, and the intended age/market scope.

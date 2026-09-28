@@ -42,7 +42,7 @@ export function useAddReminder(profileId: string | undefined) {
       if (!profileId) throw new Error("No active profile");
       return addReminder(profileId, input);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -50,7 +50,7 @@ export function useUpdateReminder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: ReminderInput }) => updateReminder(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -58,7 +58,7 @@ export function useDeleteReminder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteReminder(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -81,6 +81,6 @@ export function useToggleReminderDone() {
       return { before };
     },
     onError: (_err, _vars, context) => context?.before.forEach(([k, data]) => queryClient.setQueryData(k, data)),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: completionsKey }),
+    onSettled: () => { void queryClient.invalidateQueries({ queryKey: completionsKey }); },
   });
 }

@@ -1,8 +1,7 @@
 /**
  * Mediulr color system. Calm, trustworthy, restrained — a warm neutral base
  * with one confident accent (a mild glowing orange) and muted semantic states.
- * Light mode only for now; `dark` is scaffolded so useColorScheme can switch
- * to it later without touching component code (see docs/ROADMAP.md).
+ * Both palettes follow the device appearance preference.
  */
 
 const light = {
@@ -16,7 +15,7 @@ const light = {
   // Text
   textPrimary: "#221F1B",
   textSecondary: "#6B655D",
-  textTertiary: "#A39C91",
+  textTertiary: "#716A60",
   textInverse: "#FFFFFF",
 
   // Borders
@@ -24,12 +23,12 @@ const light = {
   borderStrong: "#D8D1C6",
 
   // Brand / accent — mild glowing orange
-  accent: "#EA7A3D",
+  accent: "#B65320",
   accentSoft: "#FCE6D4",
   accentStrong: "#C75F26",
 
   // Semantic
-  success: "#3C8A5C",
+  success: "#33764F",
   successSoft: "#E3F1E7",
   warning: "#A67C1E",
   warningSoft: "#FAEFDD",
@@ -63,7 +62,7 @@ const dark = {
 
   textPrimary: "#F3F0EA",
   textSecondary: "#B4AEA3",
-  textTertiary: "#7C766B",
+  textTertiary: "#A49C8F",
   textInverse: "#161513",
 
   border: "#332F2A",

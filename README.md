@@ -2,7 +2,7 @@
 
 **Medicine + Scheduler.** A personal health organizer for medication doses, doctor visits, custom reminders, meals, and exercise. One account can manage its own profile and dependent family profiles.
 
-This is an Expo / React Native app with a Supabase backend. Core features are implemented; billing and several launch tasks remain open. This documentation reflects the repository as reviewed on **2026-09-27**, not a certification of the deployed service or device behavior.
+This is an Expo / React Native app with a Supabase backend. Core features are implemented; billing and several launch tasks remain open. This documentation reflects the repository as reviewed on **2026-09-28**, not a certification of the deployed service or device behavior. See the [production readiness review](docs/PRODUCTION_READINESS.md) before planning a public release.
 
 ## Current features
 
@@ -13,9 +13,9 @@ This is an Expo / React Native app with a Supabase backend. Core features are im
 - Food and exercise logs, shown on the calendar and a separate Lifestyle tab.
 - Family profile switching and up to three guardian contacts per profile. A missed-dose action opens a message for the patient to send.
 - Local notification planning, action buttons, ten-minute snoozes, and optional dose follow-ups.
-- Cached schedule data and an offline queue for taken/skipped dose answers. Other writes require connectivity.
+- Supported profile, medication, visit, food, exercise, guardian, and custom-reminder changes work offline, including completion toggles. Changes appear immediately and replay from a persistent device queue when the app reconnects. Dose answers retain their separate retry queue; its device-storage failure behavior is described in [Reliability](docs/RELIABILITY.md).
 - English and Urdu, RTL layout support, and Simple Mode with larger text and controls.
-- Email/password authentication, sign-out cleanup, and account deletion through a database function.
+- Email/password authentication with protected routes, email-link callbacks, password recovery, sign-out cleanup, and account deletion through a database function.
 
 There are no provider accounts, clinic integrations, booking services, or automatic guardian messages. Health records are stored in Supabase; see [data handling and product boundaries](docs/COMPLIANCE.md).
 
@@ -26,9 +26,9 @@ There are no provider accounts, clinic integrations, booking services, or automa
 | App | Expo SDK 57, React Native 0.86, React 19, TypeScript |
 | Navigation | Expo Router; five main tabs, detail screens, and forms |
 | Server data | Supabase Auth/Postgres, React Query, SQL ownership policies |
-| Device persistence | AsyncStorage for auth, selected query results, dose queue, and preferences |
+| Device persistence | AsyncStorage for auth, fetched record snapshots, selected query results, edit and dose queues, and preferences |
 | Notifications | On-device scheduling through Expo Notifications; no remote push backend |
-| Subscription | Paywall mockup displays $2.99/month; purchase, restore, and entitlement logic are absent |
+| Subscription | Not available; purchase, restore, and entitlement logic are absent |
 | Analytics | PostHog is planned, not installed or connected |
 
 Supabase Storage is not used by the current app. RevenueCat, PDF export, biometric locking, and a clinical allergies/conditions profile are not implemented.
@@ -55,9 +55,10 @@ See [Setup](docs/SETUP.md) for authentication configuration, web preview, Androi
 ```bash
 npm run typecheck
 npm test
+npm run test:ui
 ```
 
-The 2026-09-27 code review passed TypeScript checking and all 103 tests across six files. These are logic tests; they do not verify live RLS policies, migration deployment, rendered screens, purchases, or notification delivery on devices.
+TypeScript checking and 113 logic tests pass. Playwright exercises rendered workflows at phone and desktop widths using intercepted backend responses; see the [functional and UI audit](docs/FUNCTIONAL_UI_AUDIT.md) for coverage and browser setup. These checks do not verify live RLS, migration deployment, email delivery, purchases, or device notification delivery.
 
 ## Documentation
 
@@ -70,5 +71,7 @@ The 2026-09-27 code review passed TypeScript checking and all 103 tests across s
 | [Languages](docs/LANGUAGES.md) | English/Urdu behavior and translation development |
 | [Roadmap](docs/ROADMAP.md) | Implemented features and remaining work |
 | [Compliance and data handling](docs/COMPLIANCE.md) | Product boundaries, data flows, and launch review items |
+| [Production readiness](docs/PRODUCTION_READINESS.md) | Verified checks and outstanding release gates |
+| [Functional and UI audit](docs/FUNCTIONAL_UI_AUDIT.md) | Browser coverage, reproduced fixes, screenshots, and remaining acceptance work |
 
 The wider feasibility study and product specification are maintained outside this repository. Use the code and SQL migrations to establish what currently exists; use the roadmap for planned work.

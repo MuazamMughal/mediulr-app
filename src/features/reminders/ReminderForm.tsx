@@ -1,5 +1,7 @@
+import { dismissForm } from "../../lib/dismissForm";
 import { useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
+import { AppSwitch } from "../../components/AppSwitch";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -150,7 +152,7 @@ export function ReminderForm(props: Props) {
         await addReminder.mutateAsync(input);
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      router.dismiss();
+      dismissForm(router);
     } catch (err) {
       Alert.alert(existing ? t("reminders.errUpdate") : t("reminders.errSave"), friendlyError(err));
     }
@@ -165,7 +167,7 @@ export function ReminderForm(props: Props) {
         style: "destructive",
         onPress: () =>
           deleteReminder.mutate(existing.id, {
-            onSuccess: () => router.dismiss(),
+            onSuccess: () => dismissForm(router),
             onError: (err) => Alert.alert(t("reminders.errDelete"), friendlyError(err)),
           }),
       },
@@ -182,7 +184,7 @@ export function ReminderForm(props: Props) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: theme.colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <SheetHeader title={editing ? t("reminders.edit") : t("reminders.new")} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("reminders.edit") : t("reminders.new")} onClose={() => dismissForm(router)} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         {!editing && profile && !profile.isSelf && (
           <AppText variant="bodySmall" color="secondary" style={styles.subheading}>
@@ -284,7 +286,7 @@ export function ReminderForm(props: Props) {
               <AppText variant="bodyMedium" style={{ flex: 1 }}>
                 {t("reminders.endToggle")}
               </AppText>
-              <Switch value={hasEnd} onValueChange={setHasEnd} trackColor={{ true: theme.colors.accent, false: theme.colors.borderStrong }} accessibilityLabel={t("reminders.endToggle")} />
+              <AppSwitch value={hasEnd} onValueChange={setHasEnd} trackColor={{ true: theme.colors.accent, false: theme.colors.borderStrong }} accessibilityLabel={t("reminders.endToggle")} />
             </View>
             {hasEnd && (
               <View style={{ marginTop: 12 }}>

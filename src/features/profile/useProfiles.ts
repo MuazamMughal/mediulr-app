@@ -10,6 +10,6 @@ export function useAddDependentProfile() {
   return useMutation({
     mutationFn: ({ displayName, dateOfBirth }: { displayName: string; dateOfBirth?: string }) =>
       addDependentProfile(displayName, dateOfBirth),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profiles"] }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["profiles"] }); },
   });
 }

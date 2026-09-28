@@ -10,6 +10,7 @@ import { getI18n } from "../../i18n";
  * imports this module (medication/appointment forms).
  */
 type NotificationsModule = typeof import("expo-notifications");
+const ANDROID_CHANNEL = "mediulr-reminders";
 
 let cached: NotificationsModule | null | undefined;
 
@@ -35,6 +36,8 @@ export async function refreshActionCategories(): Promise<void> {
 }
 
 export async function getNotifications(): Promise<NotificationsModule | null> {
+  // This app schedules native local reminders; browser permission must never block saving.
+  if (Platform.OS === "web") return null;
   if (cached !== undefined) return cached;
   try {
     const mod = await import("expo-notifications");
@@ -46,6 +49,13 @@ export async function getNotifications(): Promise<NotificationsModule | null> {
         shouldSetBadge: false,
       }),
     });
+    if (Platform.OS === "android") {
+      await mod.setNotificationChannelAsync(ANDROID_CHANNEL, {
+        name: "Health reminders",
+        importance: mod.AndroidImportance.HIGH,
+        sound: "default",
+      });
+    }
     await registerActionCategories(mod).catch((err) => console.warn("Couldn't register notification buttons", err));
     cached = mod;
   } catch (err) {
@@ -59,12 +69,17 @@ export async function getNotifications(): Promise<NotificationsModule | null> {
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  const Notifications = await getNotifications();
-  if (!Notifications) return false;
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  if (existing === "granted") return true;
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === "granted";
+  try {
+    const Notifications = await getNotifications();
+    if (!Notifications) return false;
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    if (existing === "granted") return true;
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === "granted";
+  } catch (error) {
+    console.warn("Couldn't request reminder permission", error);
+    return false;
+  }
 }
 
 export interface ScheduleReminderInput {
@@ -88,7 +103,8 @@ export async function scheduleReminder({ id, title, body, fireAt, category, data
   await Notifications.scheduleNotificationAsync({
     identifier: id,
     content: { title, body, sound: Platform.OS === "ios" ? "default" : undefined, categoryIdentifier: category, data },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt,
+      ...(Platform.OS === "android" ? { channelId: ANDROID_CHANNEL } : {}) },
   });
 }
 
@@ -137,7 +153,8 @@ async function doReplaceAllReminders(source: ReminderSource): Promise<void> {
       await Notifications.scheduleNotificationAsync({
         identifier: id,
         content: { title, body, sound: Platform.OS === "ios" ? "default" : undefined, categoryIdentifier: category, data },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireAt,
+          ...(Platform.OS === "android" ? { channelId: ANDROID_CHANNEL } : {}) },
       });
     }
   } catch (err) {

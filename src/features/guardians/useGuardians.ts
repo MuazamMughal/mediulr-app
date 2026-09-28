@@ -19,7 +19,7 @@ export function useAddGuardian(profileId: string | undefined) {
       if (!profileId) throw new Error("No active profile");
       return addGuardian(profileId, input);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -27,7 +27,7 @@ export function useUpdateGuardian() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: GuardianInput }) => updateGuardian(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }
 
@@ -35,6 +35,6 @@ export function useDeleteGuardian() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteGuardian(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: KEY }); },
   });
 }

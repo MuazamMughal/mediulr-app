@@ -1,12 +1,12 @@
 import "../src/lib/webAlert"; // makes Alert dialogs work on web (no effect on phones)
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { LogBox } from "react-native";
+import { ActivityIndicator, LogBox, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider, useTheme } from "../src/theme/ThemeProvider";
@@ -15,9 +15,12 @@ import { LocaleProvider, useI18n } from "../src/i18n/LocaleProvider";
 import { ActiveProfileProvider } from "../src/features/profile/ActiveProfile";
 import { cancelAllReminders } from "../src/features/notifications/scheduleNotifications";
 import { doseOutbox } from "../src/features/offline/doseOutbox";
+import { clearOfflineEdits } from "../src/features/offline/editApi";
+import { useEditSync } from "../src/features/offline/useEditSync";
 import { useNotificationActions } from "../src/features/notifications/useNotificationActions";
 import { supabase } from "../src/lib/supabase";
 import { setSharedQueryClient } from "../src/lib/queryClientRef";
+import { AuthSessionProvider, useAuthSession } from "../src/features/auth/AuthSession";
 
 // Expo Go on SDK 53+ dropped notification support and logs a loud error about it on
 // every import — src/features/notifications already catches this and degrades gracefully,
@@ -31,25 +34,30 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: CACHE
 setSharedQueryClient(queryClient);
 
 /**
- * A copy of today's schedule is kept on the phone so the app opens (and shows what's due) with no signal.
- * Only the schedule itself is saved — profiles, medications, visits and the calendar — never food, exercise or
- * guardians' phone numbers. It is wiped on sign-out, and dropped after three days.
+ * Persist fetched query families so previously opened screens can render without a signal.
+ * The edit journal and fetched record snapshots are stored separately by features/offline.
+ * Sign-out clears all three device stores.
  */
-const CACHED_QUERIES = new Set(["profiles", "medications", "appointments", "calendarEvents", "customReminders"]);
+const CACHED_QUERIES = new Set(["profiles", "medications", "appointments", "calendarEvents", "customReminders", "foodEntries", "exerciseEntries", "guardians"]);
 const persister = createAsyncStoragePersister({ storage: AsyncStorage, key: "mediulr:query-cache", throttleTime: 1000 });
 
 /** When anyone signs out, drop every cached query and scheduled reminder so the next person never sees or hears the last one's data. */
 function AuthSideEffects() {
   const client = useQueryClient();
+  const previousUserId = useRef<string | null>(null);
   useNotificationActions();
+  useEditSync();
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user.id ?? null;
+      if (event === "SIGNED_OUT" || (previousUserId.current && nextUserId && previousUserId.current !== nextUserId)) {
         client.clear();
-        persister.removeClient();
-        doseOutbox.clear();
-        cancelAllReminders();
+        void persister.removeClient();
+        void doseOutbox.clear();
+        void clearOfflineEdits().catch(() => undefined);
+        void cancelAllReminders();
       }
+      previousUserId.current = nextUserId;
     });
     return () => data.subscription.unsubscribe();
   }, [client]);
@@ -59,6 +67,12 @@ function AuthSideEffects() {
 function Navigation() {
   const theme = useTheme();
   const { t, isRTL } = useI18n();
+  const session = useAuthSession();
+
+  // Resolve the persisted session before evaluating guards, preserving private deep links.
+  if (session === undefined) {
+    return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.background }}><ActivityIndicator color={theme.colors.accent} /></View>;
+  }
 
   return (
     <Stack
@@ -71,7 +85,11 @@ function Navigation() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
+      <Stack.Protected guard={!!session}>
+      <Stack.Screen name="auth/reset-password" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
       <Stack.Screen
@@ -131,6 +149,7 @@ function Navigation() {
         options={{ headerShown: false, presentation: "formSheet", sheetAllowedDetents: [1.0], sheetGrabberVisible: true }}
       />
       <Stack.Screen name="settings" options={{ title: t("nav.settings") }} />
+      </Stack.Protected>
     </Stack>
   );
 }
@@ -153,11 +172,13 @@ export default function RootLayout() {
                 },
               }}
             >
-              <ActiveProfileProvider>
-                <AuthSideEffects />
-                <Navigation />
-                <StatusBar style="auto" />
-              </ActiveProfileProvider>
+              <AuthSessionProvider>
+                <ActiveProfileProvider>
+                  <AuthSideEffects />
+                  <Navigation />
+                  <StatusBar style="auto" />
+                </ActiveProfileProvider>
+              </AuthSessionProvider>
             </PersistQueryClientProvider>
           </ThemeProvider>
           </LocaleProvider>

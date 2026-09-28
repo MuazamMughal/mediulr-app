@@ -23,6 +23,7 @@ export function AppInput({ label, error, style, onFocus, onBlur, ...props }: App
       )}
       <TextInput
         placeholderTextColor={theme.colors.textTertiary}
+        accessibilityLabel={label}
         {...props}
         onFocus={(e) => {
           setFocused(true);

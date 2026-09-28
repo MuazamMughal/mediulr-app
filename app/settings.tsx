@@ -1,4 +1,5 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { AppSwitch } from "../src/components/AppSwitch";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../src/theme/ThemeProvider";
@@ -10,6 +11,8 @@ import { friendlyError } from "../src/lib/friendlyError";
 import { usePreferences } from "../src/features/preferences/Preferences";
 import { useI18n } from "../src/i18n/LocaleProvider";
 import { LOCALES, type LanguagePref } from "../src/i18n/core";
+import { editStore } from "../src/features/offline/editApi";
+import { doseOutbox } from "../src/features/offline/doseOutbox";
 
 const LANGUAGE_CHOICES: { pref: LanguagePref; label: (t: (k: "language.system") => string) => string }[] = [
   { pref: "system", label: (t) => t("language.system") },
@@ -36,7 +39,7 @@ export default function SettingsScreen() {
               {t("settings.simpleText")}
             </AppText>
           </View>
-          <Switch
+          <AppSwitch
             value={prefs.simpleMode}
             onValueChange={(v) => setPreference("simpleMode", v)}
             trackColor={{ true: theme.colors.accent, false: theme.colors.borderStrong }}
@@ -84,7 +87,7 @@ export default function SettingsScreen() {
               {t("settings.followUpsText")}
             </AppText>
           </View>
-          <Switch
+          <AppSwitch
             value={prefs.followUps}
             onValueChange={(v) => setPreference("followUps", v)}
             trackColor={{ true: theme.colors.accent, false: theme.colors.borderStrong }}
@@ -98,17 +101,20 @@ export default function SettingsScreen() {
       </AppText>
       <AppCard padded={false}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("settings.signOut")}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
           onPress={() =>
-            Alert.alert(t("settings.signOutTitle"), undefined, [
+            Alert.alert(t("settings.signOutTitle"), editStore.list().length || doseOutbox.list().length ? t("settings.signOutPending") : undefined, [
               { text: t("common.cancel"), style: "cancel" },
               {
                 text: t("settings.signOut"),
                 style: "destructive",
                 onPress: async () => {
                   // Cached data and scheduled reminders are cleared by the SIGNED_OUT listener in app/_layout.tsx.
-                  await supabase.auth.signOut();
-                  router.replace("/");
+                  const { error } = await supabase.auth.signOut();
+                  if (error) Alert.alert(t("settings.signOutTitle"), friendlyError(error));
+                  else router.replace("/");
                 },
               },
             ])
@@ -124,6 +130,8 @@ export default function SettingsScreen() {
       </AppText>
       <AppCard padded={false}>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("settings.deleteAccount")}
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
           onPress={() =>
             Alert.alert(t("settings.deleteTitle"), t("settings.deleteBody"), [

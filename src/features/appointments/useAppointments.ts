@@ -22,11 +22,12 @@ export function useAddAppointment() {
   return useMutation({
     mutationFn: (input: NewAppointmentInput) => addAppointment(input),
     // The calendar and reminder schedule are derived from appointments, so they go stale too.
-    onSuccess: () =>
-      Promise.all([
+    onSuccess: () => {
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["calendarEvents"] }),
-      ]),
+      ]);
+    },
   });
 }
 
@@ -34,11 +35,12 @@ export function useUpdateAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, edit }: { id: string; edit: AppointmentEdit }) => updateAppointment(id, edit),
-    onSuccess: () =>
-      Promise.all([
+    onSuccess: () => {
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["calendarEvents"] }),
-      ]),
+      ]);
+    },
   });
 }
 
@@ -46,11 +48,12 @@ export function useDeleteAppointment() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteAppointment(id),
-    onSuccess: () =>
-      Promise.all([
+    onSuccess: () => {
+      void Promise.all([
         queryClient.invalidateQueries({ queryKey: ["appointments"] }),
         queryClient.invalidateQueries({ queryKey: ["calendarEvents"] }),
-      ]),
+      ]);
+    },
   });
 }
 
@@ -58,6 +61,6 @@ export function useUpdatePostVisitNotes(_profileId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string | null }) => updatePostVisitNotes(id, notes),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["appointments"] }); },
   });
 }

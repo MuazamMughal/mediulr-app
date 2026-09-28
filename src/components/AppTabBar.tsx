@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-na
 import type { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs";
 import { useTheme } from "../theme/ThemeProvider";
 import { AppText } from "./AppText";
+import { EditSyncBanner } from "./EditSyncBanner";
 
 const ICON_SIZE = 22;
 
@@ -21,6 +22,7 @@ export function AppTabBar({ state, descriptors, navigation, insets }: BottomTabB
 
   return (
     <View style={[styles.outer, { backgroundColor: theme.colors.background, paddingBottom: bottomGap }]}>
+      <EditSyncBanner />
       <View
         accessibilityRole="tablist"
         style={[

@@ -1,3 +1,4 @@
+import { dismissForm } from "../../lib/dismissForm";
 import { useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
@@ -172,7 +173,7 @@ export function MedicationForm(props: Props) {
               },
             });
           }
-          router.dismiss();
+          dismissForm(router);
         } catch (err) {
           Alert.alert(t("meds.form.errSaveChanges"), friendlyError(err));
         }
@@ -204,7 +205,7 @@ export function MedicationForm(props: Props) {
         endDate: endDate ?? undefined,
       });
 
-      router.dismiss();
+      dismissForm(router);
     } catch (err) {
       Alert.alert(t("meds.form.errSave"), friendlyError(err));
     }
@@ -215,7 +216,7 @@ export function MedicationForm(props: Props) {
       style={{ flex: 1, backgroundColor: theme.colors.background }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <SheetHeader title={editing ? t("meds.form.editTitle") : t("meds.form.addTitle")} onClose={() => router.dismiss()} />
+      <SheetHeader title={editing ? t("meds.form.editTitle") : t("meds.form.addTitle")} onClose={() => dismissForm(router)} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
